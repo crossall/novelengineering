@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분기형 이야기 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tabs button { background: #fff; color: var(--ink); border-color: var(--line); }
+  .tabs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  .node { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; background: #fff; }
+  .node.start { border-color: var(--ok); }
+  .node.branch { border-color: var(--warn); background: #fffdf7; }
+  .node .head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .node .head b { margin-right: auto; }
+  .node .head button { font-size: 0.8rem; padding: 4px 10px; }
+  .node textarea { min-height: 64px; }
+  .node .ev { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+  .node .ev input { width: 90px; }
+  .choice { border-left: 3px solid var(--line); padding: 6px 10px; margin: 8px 0; background: #faf8f4; border-radius: 0 8px 8px 0; }
+  .choice.locked { border-left-color: var(--warn); }
+  .choice .row input[type="text"] { flex: 1; min-width: 140px; }
+  .choice .row select { flex: 1; min-width: 140px; }
+  .choice textarea { min-height: 48px; margin-top: 6px; }
+  .choice .why-label { font-size: 0.85rem; }
+  .hint { font-size: 0.85rem; color: var(--bad); min-height: 1.2em; }
+  .hint.ok { color: var(--ok); }
+  .issues { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; }
+  .issues li { padding: 5px 0; border-bottom: 1px solid var(--line); color: var(--bad); }
+  .issues li.ok { color: var(--ok); }
+  .sticky { position: sticky; top: 12px; }
+  .page { font-size: 1.05rem; line-height: 1.8; min-height: 120px; }
+  .choices button { display: block; width: 100%; text-align: left; margin: 8px 0; background: #fff; color: var(--ink); border-color: var(--line); }
+  .choices button:hover { border-color: var(--accent); color: var(--accent); }
+  .side { border-left: 3px solid var(--warn); background: #fffdf7; padding: 8px 12px; border-radius: 0 8px 8px 0; font-size: 0.92rem; }
+  .side.plain { border-left-color: var(--line); background: #faf8f4; }
+  .path { list-style: none; padding: 0; margin: 8px 0; font-size: 0.9rem; }
+  .path li { padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .path li .pick { color: var(--accent); font-weight: 600; }
+</style>
+</head>
+<body data-stage="6단계 이야기 재구성" data-who="학생" data-title="분기형 이야기">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 반사실적·인과 추론 ("장치가 있을 때 / 없을 때")</div>
+    <p>이야기를 갈림길이 있는 책으로 만들어요. 한 곳에서 <b>장치가 있을 때</b>와 <b>장치가 없을 때</b>로 길이 갈라지고, 선택지마다 "이 선택 때문에 무엇이 달라지는지"를 꼭 적어야 해요. 그래야 읽는 사람이 왜 이야기가 그렇게 흘러가는지 알 수 있어요.</p>
+  </div>
+
+  <div class="tabs"><button id="tabMake" class="on">만들기</button><button id="tabRead">읽기</button></div>
+
+  <div id="make">
+    <div class="layout">
+      <div>
+        <div class="row" style="margin-bottom:12px">
+          <button id="btnAdd">노드 추가</button><button class="secondary" id="btnSeed">예시 불러오기</button><button class="ghost" id="btnClear">모두 지우기</button>
+        </div>
+        <div id="nodes"></div>
+      </div>
+      <div class="card sticky">
+        <h3>확인</h3>
+        <ul class="issues" id="issues"></ul>
+        <div class="row" style="margin-top:10px"><button id="btnPublish" disabled>출판</button><span class="hint" id="pubHint"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="read" hidden>
+    <div class="layout">
+      <div class="card">
+        <div id="page" class="page"></div>
+        <div id="choices" class="choices"></div>
+        <div id="ending"></div>
+      </div>
+      <div class="card sticky"><h3>왜 이렇게 되나요?</h3><div id="side"></div></div>
+    </div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 학생이 새 이야기를 노드(장면)로 나누어 넣고, 장치가 등장하는 장면에서 "여기를 분기점으로"를 눌러 두 길을 만들게 합니다. 원작을 그대로 쓰는 장면에는 근거 문장 번호를 넣게 하고, 확인 목록이 모두 통과되면 출판해서 친구가 읽게 합니다.
+    관찰 포인트: 선택지마다 적는 <b>"이 선택 때문에 무엇이 달라지나요?"</b>가 인과 추론이 드러나는 자리입니다. 구조 자체가 인과 설명 없이는 출판되지 않도록 되어 있으므로, 학생이 쓴 설명이 장치의 작동(무엇을 막는가)과 이어지는지, "그냥 그렇게 됐어요" 수준인지 보세요. 읽기 모드에서 두 길을 다 읽은 뒤 "어느 길이 더 말이 되나요?"를 물으면 원작 제약과 비교하는 이야기가 나옵니다.
+    <br><b>명세.</b> 기능: 노드(글, 근거 문장 번호 선택, 선택지 0~2개)를 만들고 잇는 편집기와, 시작 노드부터 선택지를 따라 읽는 읽기 모드. 입력: 노드 글(5자 이상), 근거 문장 번호(1~43, 선택), 선택지 이름·대상 노드·인과 설명(5자 이상), 분기점 지정(선택지 이름이 "장치가 있을 때"/"장치가 없을 때"로 고정). 출력: 확인 목록(들어오는 길 없는 노드, 빈 대상, 빈 인과 설명, 분기점 없음, 끝 노드 없음, 시작에서 끝까지 못 감), 읽기 화면(글·근거 배지·선택 버튼·옆 메모의 인과 설명), 끝에서 지나온 길과 다시 읽기 버튼. 성공 조건: 확인 목록이 비어야만 출판 버튼이 눌린다, 분기점은 정확히 두 선택지를 가진다, 인과 설명이 빈 선택지는 출판되지 않는다, 읽기에서 분기점을 지나면 옆 메모에 그 인과 설명이 보인다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const { el, evidenceBadge, load, save, uid } = window.NE;
+  const STORE = "ne.06.branching";
+  const MIN_TEXT = 5, MIN_WHY = 5, MAX_CHOICES = 2, MAX_SENT = window.STORY.sentences.length;
+  const BRANCH_LABELS = ["장치가 있을 때", "장치가 없을 때"];
+
+  const mkNode = (patch) => ({ id: uid(), text: "", evidence: "", choices: [], isBranch: false, ...patch });
+  const mkChoice = (patch) => ({ id: uid(), label: "", target: "", why: "", ...patch });
+  const SEED = {
+    startId: "n1",
+    nodes: [
+      mkNode({ id: "n1", text: "늑대가 짚집과 나뭇가지집을 날려 버리자, 두 형제는 숨이 턱에 차도록 달려 셋째의 벽돌집으로 피했습니다.", evidence: 26, choices: [mkChoice({ label: "다음", target: "n2", why: "형들이 벽돌집에 모여서 늑대도 벽돌집으로 따라와요." })] }),
+      mkNode({ id: "n2", isBranch: true, text: "늑대는 벽돌집을 아무리 불어도 소용이 없자 \"굴뚝으로 들어가서 너희를 잡아먹겠다!\" 하고 지붕 위로 기어올랐습니다.", evidence: 40, choices: [
+        mkChoice({ label: BRANCH_LABELS[0], target: "n3", why: "굴뚝에 무거운 뚜껑이 있어서 늑대가 굴뚝으로 내려올 수 없어요. 문장 40의 계획이 막혀요." }),
+        mkChoice({ label: BRANCH_LABELS[1], target: "n5", why: "굴뚝이 열려 있어서 늑대가 원작처럼 굴뚝으로 내려와요." })] }),
+      mkNode({ id: "n3", text: "셋째가 미리 얹어 둔 무거운 돌 뚜껑이 굴뚝을 꽉 막고 있었습니다. 늑대는 아무리 밀어도 뚜껑을 열 수 없었습니다.", choices: [mkChoice({ label: "늑대는 어떻게 할까요?", target: "n4", why: "들어갈 길이 없으니 늑대는 지붕 위에서 기다리는 수밖에 없어요." })] }),
+      mkNode({ id: "n4", text: "지붕 위에서 밤새 떨던 늑대는 배가 고파 힘이 빠졌고, 아침이 되자 숲으로 돌아갔습니다. 삼형제는 뚜껑 덕분에 편히 잠들었습니다." }),
+      mkNode({ id: "n5", text: "셋째 돼지는 재빨리 벽난로에 큰 솥을 걸고 물을 펄펄 끓였습니다.", evidence: 41, choices: [mkChoice({ label: "다음", target: "n6", why: "굴뚝 아래에 벽난로가 있어서 내려오는 늑대는 솥 위로 떨어져요." })] }),
+      mkNode({ id: "n6", text: "굴뚝으로 내려온 늑대는 그대로 끓는 솥에 빠졌고, 삼형제는 뚜껑을 덮었습니다.", evidence: 42, choices: [mkChoice({ label: "다음", target: "n7", why: "늑대가 사라졌으니 삼형제는 더 이상 위험하지 않아요." })] }),
+      mkNode({ id: "n7", text: "그 뒤로 삼형제는 벽돌집에서 오래오래 행복하게 살았습니다.", evidence: 43 })
+    ]
+  };
+  const EMPTY = { nodes: [], startId: null, published: false, mode: "make" };
+  let state = { ...EMPTY, ...load(STORE, {}) };
+  let play = { current: null, path: [] };
+
+  const setState = patch => { state = { ...state, ...patch }; save(STORE, state); };
+  const nodeById = id => state.nodes.find(n => n.id === id);
+  const nodeLabel = n => "노드 " + (state.nodes.indexOf(n) + 1);
+  const evidenceOk = v => v === "" || (Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= MAX_SENT);
+
+  // ---- 불변 갱신 ----
+  const updateNode = (id, patch) => setState({ nodes: state.nodes.map(n => n.id === id ? { ...n, ...patch } : n), published: false });
+  const updateChoice = (nid, cid, patch) => updateNode(nid, { choices: nodeById(nid).choices.map(c => c.id === cid ? { ...c, ...patch } : c) });
+  function setBranch(id) {
+    const nodes = state.nodes.map(n => {
+      if (n.id !== id) return { ...n, isBranch: false };
+      const choices = BRANCH_LABELS.map((label, i) => ({ ...(n.choices[i] || mkChoice()), label }));
+      return { ...n, isBranch: true, choices };
+    });
+    setState({ nodes, published: false });
+  }
+  function removeNode(id) {
+    const nodes = state.nodes.filter(n => n.id !== id).map(n => ({ ...n, choices: n.choices.map(c => c.target === id ? { ...c, target: "" } : c) }));
+    setState({ nodes, startId: state.startId === id ? (nodes[0] ? nodes[0].id : null) : state.startId, published: false });
+  }
+
+  // ---- 검증 ----
+  function reachesEnd(nodes, startId) {
+    const visit = (queue, seen) => {
+      if (!queue.length) return false;
+      const [id, ...rest] = queue;
+      const n = nodes.find(m => m.id === id);
+      if (!n || seen.includes(id)) return visit(rest, seen);
+      if (!n.choices.length) return true;
+      return visit([...rest, ...n.choices.map(c => c.target)], [...seen, id]);
+    };
+    return visit([startId], []);
+  }
+  function validate(nodes, startId) {
+    if (!nodes.length) return ["노드가 없어요. '노드 추가'나 '예시 불러오기'를 눌러 보세요."];
+    const start = nodes.find(n => n.id === startId);
+    const incoming = nodes.flatMap(n => n.choices.map(c => c.target));
+    const branches = nodes.filter(n => n.isBranch);
+    const perNode = nodes.flatMap(n => [
+      ...(n.text.trim().length < MIN_TEXT ? [nodeLabel(n) + ": 이야기 글을 " + MIN_TEXT + "자 이상 써 주세요."] : []),
+      ...(!evidenceOk(n.evidence) ? [nodeLabel(n) + ": 근거 문장 번호는 1~" + MAX_SENT + " 사이여야 해요."] : []),
+      ...(n.id !== startId && !incoming.includes(n.id) ? [nodeLabel(n) + ": 여기로 오는 선택지가 없어요."] : []),
+      ...n.choices.flatMap((c, i) => {
+        const tag = nodeLabel(n) + " 선택지 " + (i + 1) + ": ";
+        return [
+          ...(!c.label.trim() ? [tag + "선택지 이름이 비어 있어요."] : []),
+          ...(!nodes.some(m => m.id === c.target) ? [tag + "가리키는 노드가 없어요."] : []),
+          ...(c.target === n.id ? [tag + "자기 자신을 가리킬 수 없어요."] : []),
+          ...(c.why.trim().length < MIN_WHY ? [tag + "'이 선택 때문에 무엇이 달라지나요?'를 " + MIN_WHY + "자 이상 써 주세요."] : [])
+        ];
+      }),
+      ...(n.isBranch && n.choices.map(c => c.label.trim()).join("|") !== BRANCH_LABELS.join("|") ? [nodeLabel(n) + ": 분기점은 '" + BRANCH_LABELS.join("' / '") + "' 두 선택지가 꼭 있어야 해요."] : [])
+    ]);
+    return [
+      ...(!start ? ["시작 노드를 정해 주세요."] : []),
+      ...perNode,
+      ...(!branches.length ? ["분기점이 없어요. 장치가 나오는 노드에서 '여기를 분기점으로'를 누르세요."] : []),
+      ...(!nodes.some(n => !n.choices.length) ? ["끝나는 노드(선택지가 0개인 노드)가 없어요."] : []),
+      ...(start && !reachesEnd(nodes, startId) ? ["시작에서 끝까지 갈 수 있는 길이 없어요."] : [])
+    ];
+  }
+  function renderIssues() {
+    const issues = validate(state.nodes, state.startId);
+    const ul = document.getElementById("issues");
+    ul.innerHTML = "";
+    if (!issues.length) ul.appendChild(el("li", { class: "ok", text: "모두 통과했어요. 출판할 수 있어요." }));
+    issues.forEach(t => ul.appendChild(el("li", { text: t })));
+    document.getElementById("btnPublish").disabled = issues.length > 0;
+    document.getElementById("pubHint").textContent = state.published ? "출판됨 · 읽기 탭에서 읽을 수 있어요." : (issues.length ? "고칠 곳 " + issues.length + "개" : "");
+    document.getElementById("pubHint").className = "hint" + (state.published ? " ok" : "");
+  }
+
+  // ---- 만들기 화면 ----
+  function renderNodes() {
+    const box = document.getElementById("nodes");
+    box.innerHTML = "";
+    if (!state.nodes.length) box.appendChild(el("p", { class: "muted", text: "아직 노드가 없어요. 첫 장면을 추가해 보세요." }));
+    state.nodes.forEach(n => box.appendChild(nodeCard(n)));
+    renderIssues();
+  }
+  const targetOptions = (self, current) => [el("option", { value: "", text: "— 어디로 가나요? —" })]
+    .concat(state.nodes.filter(m => m.id !== self.id).map(m => { const o = el("option", { value: m.id, text: nodeLabel(m) + " · " + m.text.slice(0, 18) + (m.text.length > 18 ? "…" : "") }); if (m.id === current) o.selected = true; return o; }));
+
+  function nodeCard(n) {
+    const isStart = n.id === state.startId;
+    const text = el("textarea", { maxlength: "500", placeholder: "이 장면에서 일어나는 일을 써 주세요." });
+    text.value = n.text;
+    text.addEventListener("input", () => { updateNode(n.id, { text: text.value }); renderIssues(); });
+    const ev = el("input", { type: "number", min: "1", max: String(MAX_SENT), placeholder: "번호" });
+    ev.value = n.evidence;
+    const evBox = el("span", {}, evidenceOk(n.evidence) && n.evidence !== "" ? [evidenceBadge(Number(n.evidence))] : []);
+    const evHint = el("span", { class: "hint" });
+    ev.addEventListener("input", () => {
+      updateNode(n.id, { evidence: ev.value.trim() });
+      evBox.innerHTML = "";
+      if (!evidenceOk(ev.value.trim())) evHint.textContent = "1~" + MAX_SENT + " 사이 번호만 돼요.";
+      else { evHint.textContent = ""; if (ev.value.trim()) evBox.appendChild(evidenceBadge(Number(ev.value))); }
+      renderIssues();
+    });
+    const head = el("div", { class: "head" }, [
+      el("b", { text: nodeLabel(n) }),
+      isStart ? el("span", { class: "badge ok", text: "시작" }) : "",
+      n.isBranch ? el("span", { class: "badge warn", text: "분기점" }) : "",
+      !n.choices.length ? el("span", { class: "badge", text: "끝" }) : "",
+      isStart ? "" : el("button", { class: "ghost", text: "시작으로", onclick: () => { setState({ startId: n.id, published: false }); renderNodes(); } }),
+      n.isBranch ? "" : el("button", { class: "secondary", text: "여기를 분기점으로", onclick: () => { setBranch(n.id); renderNodes(); } }),
+      el("button", { class: "ghost", text: "삭제", onclick: () => { removeNode(n.id); renderNodes(); } })
+    ].filter(Boolean));
+    const choices = el("div", {}, n.choices.map((c, i) => choiceRow(n, c, i)));
+    const addBtn = n.choices.length < MAX_CHOICES && !n.isBranch
+      ? el("button", { class: "ghost", text: "선택지 추가", style: "font-size:.85rem;padding:4px 10px", onclick: () => { updateNode(n.id, { choices: [...n.choices, mkChoice()] }); renderNodes(); } }) : "";
+    return el("div", { class: "node" + (isStart ? " start" : "") + (n.isBranch ? " branch" : "") }, [
+      head, text,
+      el("div", { class: "ev" }, [el("label", { text: "원작 그대로인 장면이면 근거 문장 번호", style: "margin:0" }), ev, evBox, evHint]),
+      choices, addBtn
+    ].filter(Boolean));
+  }
+
+  function choiceRow(n, c, i) {
+    const label = el("input", { type: "text", maxlength: "40", placeholder: "선택지 이름" });
+    label.value = c.label;
+    if (n.isBranch) label.readOnly = true;
+    label.addEventListener("input", () => { updateChoice(n.id, c.id, { label: label.value }); renderIssues(); });
+    const target = el("select", {}, targetOptions(n, c.target));
+    target.addEventListener("change", () => { updateChoice(n.id, c.id, { target: target.value }); renderNodes(); });
+    const why = el("textarea", { maxlength: "300", placeholder: "예: 굴뚝에 뚜껑이 있어서 늑대가 내려올 수 없어요." });
+    why.value = c.why;
+    why.addEventListener("input", () => { updateChoice(n.id, c.id, { why: why.value }); renderIssues(); });
+    const del = n.isBranch ? "" : el("button", { class: "ghost", text: "빼기", style: "font-size:.8rem;padding:4px 10px", onclick: () => { updateNode(n.id, { choices: n.choices.filter(x => x.id !== c.id) }); renderNodes(); } });
+    return el("div", { class: "choice" + (n.isBranch ? " locked" : "") }, [
+      el("div", { class: "row" }, [el("span", { class: "muted", text: "선택지 " + (i + 1) }), label, target, del].filter(Boolean)),
+      el("label", { class: "why-label", text: "이 선택 때문에 무엇이 달라지나요? (꼭 써야 해요)", style: "margin-top:6px" }), why
+    ]);
+  }
+
+  // ---- 읽기 화면 ----
+  function renderRead() {
+    const n = nodeById(play.current);
+    const page = document.getElementById("page"), ch = document.getElementById("choices"), end = document.getElementById("ending"), side = document.getElementById("side");
+    page.innerHTML = ""; ch.innerHTML = ""; end.innerHTML = ""; side.innerHTML = "";
+    if (!n) { page.appendChild(el("p", { class: "muted", text: "아직 출판된 이야기가 없어요. 만들기 탭에서 확인 목록을 모두 통과하고 출판해 주세요." })); return; }
+    page.appendChild(el("div", {}, [n.evidence !== "" && evidenceOk(n.evidence) ? evidenceBadge(Number(n.evidence)) : "", n.text].filter(Boolean)));
+    const last = play.path[play.path.length - 1];
+    if (last) side.appendChild(el("div", { class: "side" + (last.isBranch ? "" : " plain") }, [
+      el("b", { text: (last.isBranch ? "갈림길에서 고른 길: " : "고른 것: ") + last.choiceLabel }), el("div", { text: last.why })
+    ]));
+    else side.appendChild(el("p", { class: "muted", text: "선택지를 고르면 왜 이야기가 그렇게 되는지 여기에 나와요." }));
+    if (n.isBranch) side.appendChild(el("p", { style: "margin-top:8px" }, [el("span", { class: "badge warn", text: "여기가 갈림길이에요" })]));
+    if (!n.choices.length) { renderEnding(end); return; }
+    n.choices.forEach(c => ch.appendChild(el("button", { text: "▶ " + c.label, onclick: () => {
+      play = { current: c.target, path: [...play.path, { nodeId: n.id, text: n.text, choiceLabel: c.label, why: c.why, isBranch: n.isBranch }] };
+      renderRead();
+    } })));
+  }
+  function renderEnding(box) {
+    const n = nodeById(play.current);
+    box.appendChild(el("h3", { text: "끝", style: "margin-top:12px" }));
+    box.appendChild(el("p", { class: "muted", text: "지나온 길이에요." }));
+    const ul = el("ul", { class: "path" }, play.path.map((p, i) => el("li", {}, [(i + 1) + ". " + p.text.slice(0, 30) + "… → ", el("span", { class: "pick", text: p.choiceLabel })])));
+    ul.appendChild(el("li", {}, [(play.path.length + 1) + ". " + n.text.slice(0, 30) + "… ", el("span", { class: "badge", text: "끝" })]));
+    box.appendChild(ul);
+    box.appendChild(el("button", { text: "다른 길로 다시 읽기", onclick: () => { play = { current: state.startId, path: [] }; renderRead(); } }));
+  }
+
+  // ---- 탭과 버튼 ----
+  function showMode(mode) {
+    if (mode === "read" && !state.published) { document.getElementById("pubHint").textContent = "먼저 출판해야 읽을 수 있어요."; document.getElementById("pubHint").className = "hint"; return; }
+    setState({ mode });
+    document.getElementById("make").hidden = mode !== "make";
+    document.getElementById("read").hidden = mode !== "read";
+    document.getElementById("tabMake").className = mode === "make" ? "on" : "";
+    document.getElementById("tabRead").className = mode === "read" ? "on" : "";
+    if (mode === "read") { play = { current: state.startId, path: [] }; renderRead(); } else renderNodes();
+  }
+  document.getElementById("tabMake").addEventListener("click", () => showMode("make"));
+  document.getElementById("tabRead").addEventListener("click", () => showMode("read"));
+  document.getElementById("btnAdd").addEventListener("click", () => {
+    const node = mkNode();
+    setState({ nodes: [...state.nodes, node], startId: state.startId || node.id, published: false });
+    renderNodes();
+  });
+  document.getElementById("btnSeed").addEventListener("click", () => { setState({ ...EMPTY, ...SEED }); renderNodes(); });
+  document.getElementById("btnClear").addEventListener("click", () => { setState({ ...EMPTY }); renderNodes(); });
+  document.getElementById("btnPublish").addEventListener("click", () => {
+    if (validate(state.nodes, state.startId).length) { renderIssues(); return; }
+    setState({ published: true });
+    showMode("read");
+  });
+  showMode(state.published && state.mode === "read" ? "read" : "make");
+})();
+</script>
+</body>
+</html>

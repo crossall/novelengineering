@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모순 지적기 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  #story { min-height: 220px; }
+  .hint { font-size: 0.85rem; color: var(--bad); min-height: 1.2em; margin-top: 6px; }
+  .hint.ok { color: var(--ok); }
+  .item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 10px 0; background: #fff; }
+  .item.q { border-left: 4px solid var(--warn); }
+  .item.x { border-left: 4px solid var(--bad); }
+  .item.done { opacity: 0.85; background: #f8f6f2; }
+  .item .title { font-weight: 700; }
+  .item .mine { font-size: 0.9rem; background: #f6f2ea; padding: 6px 10px; border-radius: 8px; margin: 6px 0; }
+  .item .mine .n { color: var(--muted); font-size: 0.8rem; margin-right: 6px; }
+  .item .rule { font-size: 0.85rem; color: var(--muted); }
+  .resolve { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fffdf7; border: 1px dashed var(--line); }
+  .resolve textarea { min-height: 60px; }
+  .pick { max-height: 160px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; margin-top: 6px; }
+  .pick button { display: block; width: 100%; text-align: left; background: #fff; color: var(--ink); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font-weight: 400; font-size: 0.88rem; padding: 6px 10px; }
+  .pick button.on { background: var(--accent-soft); }
+  .log { list-style: none; padding: 0; margin: 0; }
+  .log li { border-bottom: 1px solid var(--line); padding: 8px 0; font-size: 0.9rem; }
+  .log li .note { display: block; color: var(--muted); font-size: 0.85rem; }
+  .count { font-size: 0.9rem; color: var(--muted); margin-bottom: 6px; }
+</style>
+</head>
+<body data-stage="6단계 이야기 재구성" data-who="교사" data-title="모순 지적기">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 반사실적·인과 추론 → 근거로 검증하기</div>
+    <p>새로 쓴 이야기를 붙여 넣으면 <b>규칙으로 만든 검사기</b>가 원작의 제약과 어긋나는 곳을 지적해요. 이 검사기는 사람이 아니라서 낱말만 보고 지적할 때도 있어요. 그래서 지적이 틀렸다고 생각하면 <b>근거를 들어 반박</b>할 수 있어요. 고치거나 반박하는 것, 둘 다 여러분의 생각이에요.</p>
+  </div>
+
+  <div class="layout">
+    <div class="card">
+      <h3>내 이야기</h3>
+      <div class="field"><label for="device">장치 이름</label><input type="text" id="device" maxlength="30" placeholder="예: 굴뚝 뚜껑"></div>
+      <div class="field"><label for="story">새로 쓴 이야기</label><textarea id="story" maxlength="4000" placeholder="문장 끝에 마침표를 찍어 주세요. 검사기는 마침표로 문장을 나눠요."></textarea></div>
+      <div class="row"><button id="btnRun">검사하기</button><button class="secondary" id="btnSample">예시 이야기 불러오기</button><button class="ghost" id="btnClear">지우기</button></div>
+      <div class="hint" id="runHint"></div>
+    </div>
+    <div class="card">
+      <h3>지적 목록</h3>
+      <div class="count" id="count">아직 검사하지 않았어요.</div>
+      <div id="items"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>처리 기록</h3>
+    <ul class="log" id="log"></ul>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 사건 그래프에서 만든 새 줄거리(또는 학생이 쓴 새 이야기)를 붙여 넣고 검사하게 합니다. 지적마다 "수정할게요"나 "반박할게요" 중 하나를 고르게 하고, 반박은 근거 문장을 붙여야만 인정됩니다. 다 처리한 뒤 다시 검사하면 처리한 항목은 표시가 유지됩니다.
+    관찰 포인트: <b>반박 버튼을 누르는 순간</b>이 이 앱의 핵심입니다. 검사기는 일부러 단순한 규칙(낱말 찾기)으로 만들어서 틀린 지적도 냅니다. 학생이 틀린 지적을 근거로 반박하는지, 맞는 지적을 무작정 반박하는지, "내 이야기 안의 설정"을 근거로 댈 때 실제로 그 설정을 앞에서 써 두었는지를 보세요. 검사기가 못 잡는 모순을 학생이 스스로 찾으면 크게 칭찬합니다.
+    <br><b>명세.</b> 기능: 붙여 넣은 글을 마침표 기준으로 문장으로 나누고 규칙 6가지(시대 낱말 → 제약 c1, 재료 낱말 → c3, 벽돌집+날아/무너 → 문장 29 모순, 장치가 있는데 짚집·나뭇가지집이 그대로 무너짐, 늑대가 착해짐 → 질문, 결말 낱말 없음 → 질문)로 검사해 지적 목록을 만든다. 입력: 장치 이름(2자 이상), 이야기(30자 이상), 지적마다 수정 메모(5자 이상) 또는 반박문(15자 이상)+근거(원작 문장 검색 선택 또는 "내 이야기 안의 설정" 체크+이야기 속 문장 인용). 출력: 지적 카드(종류·내 문장·원작 근거 배지), 처리 상태 배지(수정/반박 인정), 처리 기록. 성공 조건: 규칙마다 근거 문장 id가 붙는다, 근거 없는 반박은 저장되지 않는다, 인용한 문장은 실제로 내 이야기 안에 있어야 한다, 다시 검사해도 처리한 항목의 상태가 남는다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const { el, evidenceBadge, load, save } = window.NE;
+  const STORE = "ne.06.contradiction";
+  const MIN_STORY = 30, MIN_DEVICE = 2, MIN_FIX = 5, MIN_REBUT = 15;
+  const ERA_WORDS = ["전기", "전화", "스마트폰", "자동차", "드론", "로봇", "인터넷", "카메라", "모터"];
+  const MATERIAL_WORDS = ["철", "유리", "플라스틱", "시멘트"];
+  const COLLAPSE = /(날아|무너)/;
+  const KIND_WOLF = /(착해|친구가 되|사과했)/;
+  const ENDING = /(행복|살았|끝)/;
+  const cText = id => window.STORY.constraints.find(c => c.id === id).text;
+
+  const SAMPLE = {
+    device: "굴뚝 뚜껑",
+    text: "셋째 돼지는 벽돌집을 다 짓고 나서 굴뚝 위에 무거운 뚜껑을 만들어 얹었습니다. 뚜껑은 철로 만들어서 늑대가 밀어도 열리지 않았습니다. 늑대는 짚집과 나뭇가지집을 후 불어 날려 버렸고, 형들은 벽돌집으로 도망쳤습니다. 늑대는 벽돌집을 아무리 불어도 소용이 없자 지붕 위로 올라갔습니다. 하지만 굴뚝 뚜껑 때문에 들어갈 수 없었습니다. 늑대는 스마트폰으로 친구 늑대를 불렀지만 아무도 오지 않았습니다. 지친 늑대는 결국 돼지들과 친구가 되었습니다. 삼형제는 오래오래 행복하게 살았습니다."
+  };
+  const EMPTY = { device: "", text: "", items: [], resolved: {}, log: [] };
+  let state = { ...EMPTY, ...load(STORE, {}) };
+  let openForm = null; // { key, mode }
+
+  const setState = patch => { state = { ...state, ...patch }; save(STORE, state); };
+
+  // ---- 문장 나누기와 규칙 ----
+  const splitSentences = text => text.split(/(?<=[.!?])\s+|\n+/).map(s => s.trim()).filter(Boolean);
+  const deviceTokens = device => { const long = device.trim().split(/\s+/).filter(t => t.length >= 2); return long.length ? long : [device.trim()]; };
+  const mentionsDevice = (s, tokens) => tokens.some(t => s.includes(t));
+
+  function runChecks(text, device) {
+    const sents = splitSentences(text);
+    const tokens = deviceTokens(device);
+    const found = sents.flatMap((s, i) => {
+      const at = { index: i, quote: s };
+      const era = ERA_WORDS.filter(w => s.includes(w)).map(w => ({ ...at, key: "era:" + w + ":" + i, kind: "x", title: "「" + w + "」— 이 시대에 있을 수 있나요?", rule: "시대 제약: " + cText("c1"), evidence: [1, 12] }));
+      const mat = MATERIAL_WORDS.filter(w => s.includes(w)).map(w => ({ ...at, key: "mat:" + w + ":" + i, kind: "x", title: "「" + w + "」— 어디서 구했나요?", rule: "재료 제약: " + cText("c3"), evidence: [6, 9, 12] }));
+      const brick = s.includes("벽돌집") && COLLAPSE.test(s) ? [{ ...at, key: "brick:" + i, kind: "x", title: "벽돌집이 날아가거나 무너져요?", rule: "원작에서 벽돌집은 다섯 번을 불어도 꿈쩍하지 않았어요.", evidence: [29] }] : [];
+      const weak = /(짚집|나뭇가지집)/.test(s) && COLLAPSE.test(s) && tokens.length && !mentionsDevice(s, tokens) && !(i > 0 && mentionsDevice(sents[i - 1], tokens))
+        ? [{ ...at, key: "device:" + i, kind: "x", title: "장치가 있는데 왜 집은 그대로 무너지나요?", rule: "「" + device.trim() + "」이(가) 이 문장이나 바로 앞 문장에 나오지 않아요. 장치가 여기엔 없다면 그 이유를, 있다면 왜 못 막았는지를 써 주세요.", evidence: [20, 25] }] : [];
+      const wolf = s.includes("늑대") && KIND_WOLF.test(s) ? [{ ...at, key: "wolf:" + i, kind: "q", title: "늑대가 왜 바뀌었나요? 근거가 이야기 안에 있나요?", rule: "원작의 늑대는 돼지를 잡아먹으려 하고 포기하지 않아요. 바뀌었다면 바뀐 까닭이 앞에 나와야 해요.", evidence: [4, 30] }] : [];
+      return [...era, ...mat, ...brick, ...weak, ...wolf];
+    });
+    const ending = ENDING.test(text) ? [] : [{ index: -1, quote: "", key: "ending", kind: "q", title: "이야기가 어떻게 끝나나요?", rule: "끝맺는 말(행복/살았/끝 같은 낱말)이 없어요. 결말을 한 문장으로 적어 주세요.", evidence: [43] }];
+    return [...found, ...ending];
+  }
+
+  // ---- 검사 실행 ----
+  function run() {
+    const device = document.getElementById("device").value, text = document.getElementById("story").value;
+    const hint = document.getElementById("runHint");
+    if (device.trim().length < MIN_DEVICE) { hint.className = "hint"; hint.textContent = "장치 이름을 " + MIN_DEVICE + "자 이상 적어 주세요."; return; }
+    if (text.trim().length < MIN_STORY) { hint.className = "hint"; hint.textContent = "이야기를 " + MIN_STORY + "자 이상 붙여 넣어 주세요."; return; }
+    const items = runChecks(text, device);
+    setState({ device, text, items });
+    openForm = null;
+    hint.className = "hint ok";
+    hint.textContent = items.length ? "지적 " + items.length + "개를 찾았어요. 하나씩 살펴보세요." : "규칙으로는 지적할 곳을 못 찾았어요. 검사기가 못 보는 모순이 있는지 스스로 한 번 더 읽어 보세요.";
+    renderItems();
+  }
+
+  // ---- 지적 카드 ----
+  function renderItems() {
+    const box = document.getElementById("items");
+    box.innerHTML = "";
+    const done = state.items.filter(it => state.resolved[it.key]).length;
+    document.getElementById("count").textContent = state.items.length ? "지적 " + state.items.length + "개 · 처리 " + done + "개" : "아직 검사하지 않았어요.";
+    state.items.forEach(it => box.appendChild(itemCard(it)));
+  }
+
+  function itemCard(it) {
+    const r = state.resolved[it.key];
+    const card = el("div", { class: "item " + it.kind + (r ? " done" : "") }, [
+      el("div", {}, [el("span", { class: "badge " + (it.kind === "x" ? "bad" : "warn"), text: it.kind === "x" ? "모순일까요?" : "질문" }), " ", el("span", { class: "title", text: it.title })]),
+      it.quote ? el("div", { class: "mine" }, [el("span", { class: "n", text: "내 문장 " + (it.index + 1) }), it.quote]) : "",
+      el("div", { class: "rule" }, [it.rule + " ", ...it.evidence.map(evidenceBadge)])
+    ].filter(Boolean));
+    if (r) {
+      card.appendChild(el("div", { style: "margin-top:6px" }, [el("span", { class: "badge ok", text: r.status }), " ", el("small", { class: "muted", text: r.note })]));
+      return card;
+    }
+    card.appendChild(el("div", { class: "row", style: "margin-top:8px" }, [
+      el("button", { class: "secondary", text: "수정할게요", onclick: () => { openForm = { key: it.key, mode: "fix" }; renderItems(); } }),
+      el("button", { class: "ghost", text: "반박할게요", onclick: () => { openForm = { key: it.key, mode: "rebut" }; renderItems(); } })
+    ]));
+    if (openForm && openForm.key === it.key) card.appendChild(openForm.mode === "fix" ? fixForm(it) : rebutForm(it));
+    return card;
+  }
+
+  function resolve(it, status, note) {
+    const entry = { key: it.key, title: it.title, status, note, when: new Date().toLocaleString("ko-KR") };
+    setState({ resolved: { ...state.resolved, [it.key]: entry }, log: [...state.log, entry] });
+    openForm = null;
+    renderItems();
+    renderLog();
+  }
+
+  function fixForm(it) {
+    const ta = el("textarea", { placeholder: "어떻게 고칠지 적어 주세요. (예: 철 뚜껑을 무거운 돌 뚜껑으로 바꿈)", maxlength: "300" });
+    const hint = el("div", { class: "hint" });
+    return el("div", { class: "resolve" }, [el("label", { text: "어떻게 고칠 건가요?" }), ta, hint,
+      el("button", { text: "수정 기록", style: "margin-top:6px", onclick: () => {
+        if (ta.value.trim().length < MIN_FIX) { hint.textContent = "고칠 내용을 " + MIN_FIX + "자 이상 적어 주세요."; return; }
+        resolve(it, "수정", ta.value.trim());
+      } })]);
+  }
+
+  function rebutForm(it) {
+    let picked = null;
+    const ta = el("textarea", { placeholder: "왜 이 지적이 틀렸는지 " + MIN_REBUT + "자 이상으로 적어 주세요.", maxlength: "400" });
+    const search = el("input", { type: "text", placeholder: "원작에서 근거 문장 찾기 (예: 굴뚝, 순무)" });
+    const results = el("div", { class: "pick" });
+    const own = el("input", { type: "checkbox", id: "own_" + it.key.replace(/[^a-z0-9]/gi, "") });
+    const quote = el("input", { type: "text", placeholder: "내 이야기에서 그 설정이 나온 부분을 그대로 옮겨 적기" });
+    const hint = el("div", { class: "hint" });
+    search.addEventListener("input", () => {
+      results.innerHTML = "";
+      window.STORY.search(search.value).slice(0, 6).forEach(s => {
+        const b = el("button", { text: "문장 " + s.id + " · " + s.text, class: picked === s.id ? "on" : "" });
+        b.addEventListener("click", () => { picked = s.id; [...results.children].forEach(c => c.classList.remove("on")); b.classList.add("on"); });
+        results.appendChild(b);
+      });
+      if (!results.children.length && search.value.trim()) results.appendChild(el("button", { text: "찾은 문장이 없어요. 다른 낱말로 찾아보세요.", disabled: "" }));
+    });
+    const submit = () => {
+      const text = ta.value.trim();
+      if (text.length < MIN_REBUT) { hint.textContent = "반박은 " + MIN_REBUT + "자 이상 적어 주세요."; return; }
+      if (own.checked) {
+        const q = quote.value.trim();
+        if (!q) { hint.textContent = "내 이야기 속 문장을 옮겨 적어 주세요."; return; }
+        if (!state.text.includes(q)) { hint.textContent = "그 문장을 내 이야기 안에서 찾지 못했어요. 그대로 옮겨 적었는지 확인하세요."; return; }
+        resolve(it, "반박 인정", text + " (내 이야기 속 설정: 「" + q + "」)");
+        return;
+      }
+      if (!picked) { hint.textContent = "원작 근거 문장을 고르거나, '내 이야기 안의 설정이에요'에 체크해 주세요."; return; }
+      resolve(it, "반박 인정", text + " (근거: 문장 " + picked + ")");
+    };
+    return el("div", { class: "resolve" }, [
+      el("label", { text: "왜 이 지적이 틀렸나요?" }), ta,
+      el("label", { text: "근거 ① 원작 문장 고르기", style: "margin-top:8px" }), search, results,
+      el("div", { class: "row", style: "margin-top:8px" }, [own, el("label", { for: own.id, text: "근거 ② 내 이야기 안의 설정이에요", style: "margin:0" })]), quote,
+      hint, el("button", { text: "반박 제출", style: "margin-top:6px", onclick: submit })
+    ]);
+  }
+
+  function renderLog() {
+    const ul = document.getElementById("log");
+    ul.innerHTML = "";
+    if (!state.log.length) { ul.appendChild(el("li", { class: "muted", text: "아직 처리한 지적이 없어요." })); return; }
+    [...state.log].reverse().forEach(e => ul.appendChild(el("li", {}, [
+      el("span", { class: "badge " + (e.status === "수정" ? "warn" : "ok"), text: e.status }), " ", el("b", { text: e.title }),
+      el("span", { class: "note", text: e.note + " · " + e.when })
+    ])));
+  }
+
+  // ---- 초기화 ----
+  document.getElementById("btnRun").addEventListener("click", run);
+  document.getElementById("btnSample").addEventListener("click", () => {
+    document.getElementById("device").value = SAMPLE.device;
+    document.getElementById("story").value = SAMPLE.text;
+    run();
+  });
+  document.getElementById("btnClear").addEventListener("click", () => {
+    setState({ ...EMPTY });
+    openForm = null;
+    document.getElementById("device").value = "";
+    document.getElementById("story").value = "";
+    document.getElementById("runHint").textContent = "";
+    renderItems(); renderLog();
+  });
+  document.getElementById("device").value = state.device;
+  document.getElementById("story").value = state.text;
+  renderItems();
+  renderLog();
+})();
+</script>
+</body>
+</html>

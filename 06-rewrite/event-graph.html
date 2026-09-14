@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>원작 사건 그래프 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .graph-box { overflow-x: auto; }
+  svg.graph { width: 100%; max-width: 760px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .node { cursor: pointer; }
+  .node rect { fill: #fff; stroke: var(--line); stroke-width: 1.5; }
+  .node.kept rect { stroke: var(--ok); }
+  .node.changed rect { fill: #fbf0d6; stroke: var(--warn); }
+  .node.vanished rect { fill: #f1efec; stroke: #a9a49c; stroke-dasharray: 5 4; }
+  .node.vanished text { fill: #8b867e; }
+  .node.inactive rect { stroke: var(--line); }
+  .node.from rect { stroke-width: 3; }
+  .node text { font-size: 12px; fill: var(--ink); pointer-events: none; }
+  .node text.ids { font-size: 10px; fill: var(--muted); }
+  .edge { fill: none; stroke: #b8b1a6; stroke-width: 1.5; }
+  .edge.soft { stroke-dasharray: 2 4; }
+  .edge.dead { stroke: #e0dbd3; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 4px; border: 1.5px solid var(--ok); background: #fff; }
+  .legend i.changed { background: #fbf0d6; border-color: var(--warn); }
+  .legend i.vanished { background: #f1efec; border: 1.5px dashed #a9a49c; }
+  .legend i.inactive { border-color: var(--line); }
+  .cond { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 0.92rem; }
+  .cond input { margin-top: 6px; }
+  .cond label { font-weight: 500; margin: 0; cursor: pointer; }
+  .hint { font-size: 0.85rem; color: var(--bad); min-height: 1.2em; margin-top: 6px; }
+  .hint.ok { color: var(--ok); }
+  .van { border-left: 3px solid #a9a49c; background: #f8f6f2; padding: 8px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; }
+  .van .why { font-size: 0.85rem; color: var(--muted); }
+  .van textarea { min-height: 56px; margin-top: 6px; }
+  .outline { list-style: none; padding: 0; margin: 0; }
+  .outline li { padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 0.95rem; }
+  .outline li.changed { background: #fffaf0; }
+  .outline li.new { background: #f8f6f2; border-left: 3px solid var(--accent); }
+  .outline .tag { font-size: 0.78rem; font-weight: 600; margin-right: 6px; }
+  .outline li.changed .tag { color: var(--warn); }
+  .outline li.new .tag { color: var(--accent); }
+  .outline li.kept .tag { color: var(--ok); }
+  #plain { margin-top: 10px; min-height: 120px; font-size: 0.9rem; }
+</style>
+</head>
+<body data-stage="6단계 이야기 재구성" data-who="교사" data-title="원작 사건 그래프">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 반사실적·인과 추론 ("만약 그 장치가 있었다면?")</div>
+    <p>원작의 사건들은 서로 <b>조건</b>으로 이어져 있어요. 여러분이 만든 장치가 어떤 조건을 없애는지 고르면, 그 조건이 필요한 사건이 <b>사라지고</b>, 그 뒤의 사건이 <b>바뀝니다</b>. 사라진 사건 자리에는 "대신 무슨 일이 일어나는지" 여러분이 적어야 새 줄거리가 완성돼요.</p>
+  </div>
+
+  <div class="card">
+    <h3>원작 사건 그래프 <small class="muted">· 상자를 누르면 원문이 보여요</small></h3>
+    <div class="graph-box"><svg class="graph" id="graph"></svg></div>
+    <div class="legend">
+      <span><i></i>그대로</span><span><i class="changed"></i>바뀜</span><span><i class="vanished"></i>사라짐</span><span><i class="inactive"></i>장치가 아직 없을 때</span>
+      <span>실선 = 앞 사건이 꼭 필요함 · 점선 = 앞 사건의 영향을 받음</span>
+    </div>
+  </div>
+
+  <div class="grid two" style="margin-top:16px">
+    <div class="card">
+      <h3>1. 장치를 정하세요</h3>
+      <div class="field"><label for="devName">장치 이름</label><input type="text" id="devName" maxlength="30" placeholder="예: 바람막이 담장"></div>
+      <div class="field"><label for="devDesc">어떤 장치인가요?</label><textarea id="devDesc" maxlength="200" placeholder="무엇으로, 어디에, 어떻게 만드는지 한두 문장"></textarea></div>
+      <div class="field"><label for="devFrom">장치는 어느 사건부터 있나요?</label><select id="devFrom"></select><small class="muted">그 전의 사건은 원작 그대로예요.</small></div>
+      <div class="row"><button class="secondary" id="btnExample">예시: 굴뚝 뚜껑</button><button class="ghost" id="btnClear">지우기</button></div>
+    </div>
+    <div class="card">
+      <h3>2. 장치가 없애는 조건을 고르세요</h3>
+      <p class="muted" style="font-size:.9rem">체크한 조건은 "거짓"이 돼요. 근거 배지를 눌러 원작에서 그 조건이 왜 성립하는지 확인하세요.</p>
+      <div id="condList"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>3. 사라진 사건 — 대신 무슨 일이 일어나나요?</h3>
+    <div id="vanList"></div>
+    <div class="row" style="margin-top:8px"><button id="btnCompose" disabled>새 줄거리 만들기</button><span class="hint" id="composeHint"></span></div>
+  </div>
+
+  <div class="card" id="outlineCard" style="margin-top:16px" hidden>
+    <h3>4. 새 줄거리</h3>
+    <ul class="outline" id="outline"></ul>
+    <label for="plain" style="margin-top:10px">복사해서 "모순 지적기"에 붙여 넣을 수 있어요</label>
+    <textarea id="plain" readonly></textarea>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 5단계에서 만든 장치를 하나 고르고, 그 장치가 원작의 어떤 조건을 없애는지 체크하게 합니다. 회색 점선으로 사라지는 사건이 보이면 "그 자리에서 대신 무슨 일이 일어나는가"를 쓰게 하고, 마지막에 새 줄거리를 만들어 다음 앱(모순 지적기)에 붙여 넣게 합니다.
+    관찰 포인트: <b>체크한 조건과 사라진 사건이 이어지는 순간</b>이 반사실적 추론이 일어나는 지점입니다. 학생이 "장치가 있는데도 원작대로 진행되는" 문장을 쓰는지, 사라진 사건의 인물(늑대)이 다음에 무엇을 하는지까지 이어 쓰는지 보세요. 조건을 너무 많이 체크해 사건이 다 사라지면 "장치 하나가 정말 그걸 다 막나요?"라고 되묻습니다.
+    <br><b>명세.</b> 기능: 사건 13개를 조건(8개)과 앞 사건 의존으로 연결한 그래프를 SVG로 그리고, 장치가 거짓으로 만드는 조건과 장치 등장 시점을 입력받아 사라짐/바뀜을 전파한다. 입력: 장치 이름(2~30자), 설명, 등장 사건, 조건 체크(1개 이상), 사라진 사건마다 대체 문장(5자 이상). 출력: 색이 바뀐 그래프, 사라진 사건과 이유 목록, 원문(근거 배지)+대체 문장을 순서대로 합친 새 줄거리와 복사용 텍스트. 성공 조건: 조건 하나를 끄면 그 조건이 필요한 사건과 그 사건이 꼭 필요한 뒤 사건이 함께 사라진다, 장치 등장 이전 사건은 변하지 않는다, 대체 문장을 다 채우기 전에는 새 줄거리 버튼이 눌리지 않는다, 원작 문장은 STORY에서만 가져온다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const { el, evidenceBadge, showQuote, load, save } = window.NE;
+  const STORE = "ne.06.event-graph";
+  const MIN_NAME = 2, MIN_REPL = 5;
+
+  const CONDITIONS = [
+    { key: "입김이_집에_닿음", label: "늑대의 입김이 집에 닿는다", evidence: [19, 20] },
+    { key: "짚집_있음", label: "첫째의 짚집이 있다", evidence: [8] },
+    { key: "나뭇가지집_있음", label: "둘째의 나뭇가지집이 있다", evidence: [11] },
+    { key: "늑대가_문앞까지_옴", label: "늑대가 문 앞까지 올 수 있다", evidence: [16, 22, 27] },
+    { key: "늑대가_돼지를_봄", label: "늑대가 밖에서 돼지를 볼 수 있다", evidence: [38] },
+    { key: "굴뚝_열림", label: "굴뚝이 열려 있다", evidence: [40] },
+    { key: "늑대가_약속으로_유인함", label: "늑대가 시간 약속으로 꾀어낼 수 있다", evidence: [31, 34] },
+    { key: "돼지가_먼저_움직임", label: "셋째가 늑대보다 먼저 움직일 수 있다", evidence: [32, 35] }
+  ];
+  const condLabel = key => (CONDITIONS.find(c => c.key === key) || { label: key }).label;
+
+  // needs: 성립해야 하는 조건, after: 꼭 필요한 앞 사건, follows: 영향을 받는 앞 사건
+  const EVENTS = [
+    { id: "e1", label: "늑대가 짚집에 옴", ids: [16, 17, 18, 19], needs: ["늑대가_문앞까지_옴"], after: [], follows: [] },
+    { id: "e2", label: "짚집 날아감", ids: [20], needs: ["입김이_집에_닿음", "짚집_있음"], after: ["e1"], follows: [] },
+    { id: "e3", label: "첫째 도망", ids: [21], needs: [], after: ["e2"], follows: [] },
+    { id: "e4", label: "늑대가 나뭇가지집에 옴", ids: [22, 23, 24], needs: ["늑대가_문앞까지_옴"], after: ["e3"], follows: [] },
+    { id: "e5", label: "나뭇가지집 무너짐", ids: [25], needs: ["입김이_집에_닿음", "나뭇가지집_있음"], after: ["e4"], follows: [] },
+    { id: "e6", label: "두 형제 벽돌집 도착", ids: [26], needs: [], after: ["e5"], follows: [] },
+    { id: "e7", label: "벽돌집 버팀", ids: [27, 28, 29], needs: ["늑대가_문앞까지_옴"], after: [], follows: ["e6"] },
+    { id: "e8", label: "순무밭 꾀", ids: [31, 32, 33], needs: ["늑대가_약속으로_유인함", "돼지가_먼저_움직임"], after: [], follows: ["e7"] },
+    { id: "e9", label: "사과나무 꾀", ids: [34, 35, 36], needs: ["늑대가_약속으로_유인함", "돼지가_먼저_움직임"], after: [], follows: ["e8"] },
+    { id: "e10", label: "장터·버터통", ids: [37, 38, 39], needs: ["늑대가_돼지를_봄"], after: [], follows: ["e9"] },
+    { id: "e11", label: "굴뚝 침입", ids: [40, 42], needs: ["굴뚝_열림"], after: [], follows: ["e10"] },
+    { id: "e12", label: "끓는 솥", ids: [41, 42], needs: [], after: ["e11"], follows: [] },
+    { id: "e13", label: "결말", ids: [43], needs: [], after: ["e12"], follows: [] }
+  ];
+  const eventById = id => EVENTS.find(e => e.id === id);
+
+  const EXAMPLE = { name: "굴뚝 뚜껑", desc: "셋째가 굴뚝 위에 무거운 돌 뚜껑을 얹어 둔다. 연기는 옆에 낸 작은 구멍으로 빠진다.", falseKeys: ["굴뚝_열림"], from: "e11", replacements: {} };
+  const EMPTY = { name: "", desc: "", falseKeys: [], from: "e1", replacements: {}, outline: null };
+  let state = { ...EMPTY, ...load(STORE, {}) };
+  let lastVanKey = null;
+
+  // ---- 전파 (원본을 바꾸지 않고 새 객체를 돌려준다) ----
+  function propagate(events, falseKeys, fromId) {
+    const fromIndex = Math.max(0, events.findIndex(e => e.id === fromId));
+    return events.reduce((acc, ev, i) => {
+      const active = i >= fromIndex;
+      const failed = active ? ev.needs.filter(k => falseKeys.includes(k)) : [];
+      const deadParents = ev.after.filter(id => acc[id] && acc[id].state === "vanished");
+      const influenced = ev.follows.some(id => acc[id] && acc[id].state !== "kept")
+        || ev.after.some(id => acc[id] && acc[id].state === "changed");
+      const st = (failed.length || deadParents.length) ? "vanished" : influenced ? "changed" : "kept";
+      const reason = failed.length
+        ? "조건 「" + failed.map(condLabel).join("」, 「") + "」이(가) 거짓이 되어서"
+        : deadParents.length ? "앞 사건 「" + deadParents.map(id => eventById(id).label).join("」, 「") + "」이(가) 사라져서" : "";
+      return { ...acc, [ev.id]: { state: st, active, reason } };
+    }, {});
+  }
+  const currentStates = () => propagate(EVENTS, state.falseKeys, state.from);
+  const vanishedIds = states => EVENTS.filter(e => states[e.id].state === "vanished").map(e => e.id);
+
+  function setState(patch) { state = { ...state, ...patch }; save(STORE, state); render(); }
+
+  // ---- SVG 그래프 ----
+  const COLS = 4, W = 160, H = 56, GX = 28, GY = 44, PAD = 16;
+  const NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs, children) {
+    const n = document.createElementNS(NS, tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => n.setAttribute(k, v));
+    (children || []).forEach(c => n.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
+    return n;
+  }
+  const pos = i => ({ x: PAD + (i % COLS) * (W + GX), y: PAD + Math.floor(i / COLS) * (H + GY) });
+
+  function edgePath(ia, ib) {
+    const a = pos(ia), b = pos(ib);
+    if (Math.floor(ia / COLS) === Math.floor(ib / COLS)) return `M${a.x + W} ${a.y + H / 2} L${b.x} ${b.y + H / 2}`;
+    const x1 = a.x + W / 2, y1 = a.y + H, x2 = b.x + W / 2, y2 = b.y;
+    return `M${x1} ${y1} C${x1} ${y1 + 22}, ${x2} ${y2 - 22}, ${x2} ${y2}`;
+  }
+
+  function renderGraph(states) {
+    const svg = document.getElementById("graph");
+    svg.innerHTML = "";
+    const rows = Math.ceil(EVENTS.length / COLS);
+    svg.setAttribute("viewBox", `0 0 ${PAD * 2 + COLS * W + (COLS - 1) * GX} ${PAD * 2 + rows * H + (rows - 1) * GY}`);
+    svg.appendChild(svgEl("defs", {}, [svgEl("marker", { id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" }, [svgEl("path", { d: "M0 0 L10 5 L0 10 z", fill: "#b8b1a6" })])]));
+    EVENTS.forEach((ev, ib) => {
+      [...ev.after.map(id => ({ id, soft: false })), ...ev.follows.map(id => ({ id, soft: true }))].forEach(dep => {
+        const ia = EVENTS.findIndex(e => e.id === dep.id);
+        const dead = states[ev.id].state === "vanished" || states[dep.id].state === "vanished";
+        svg.appendChild(svgEl("path", { class: "edge" + (dep.soft ? " soft" : "") + (dead ? " dead" : ""), d: edgePath(ia, ib), "marker-end": "url(#arrow)" }));
+      });
+    });
+    EVENTS.forEach((ev, i) => {
+      const p = pos(i), s = states[ev.id];
+      const cls = ["node", s.state, s.active ? "" : "inactive", ev.id === state.from ? "from" : ""].join(" ");
+      const g = svgEl("g", { class: cls, transform: `translate(${p.x},${p.y})` }, [
+        svgEl("title", {}, [ev.label + (ev.needs.length ? "\n필요한 조건: " + ev.needs.map(condLabel).join(", ") : "") + (s.reason ? "\n" + s.reason : "")]),
+        svgEl("rect", { width: W, height: H, rx: 10 }),
+        svgEl("text", { x: W / 2, y: 24, "text-anchor": "middle", "font-weight": "600" }, [(s.state === "vanished" ? "✕ " : "") + ev.label]),
+        svgEl("text", { x: W / 2, y: 42, "text-anchor": "middle", class: "ids" }, ["문장 " + ev.ids.join(", ")])
+      ]);
+      g.addEventListener("click", () => showQuote(ev.ids[0]));
+      svg.appendChild(g);
+    });
+  }
+
+  // ---- 폼 ----
+  function buildForm() {
+    const sel = document.getElementById("devFrom");
+    EVENTS.forEach(ev => sel.appendChild(el("option", { value: ev.id, text: ev.label + " (문장 " + ev.ids[0] + "~)" })));
+    const list = document.getElementById("condList");
+    CONDITIONS.forEach(c => {
+      const box = el("input", { type: "checkbox", id: "c_" + c.key });
+      box.addEventListener("change", () => {
+        const falseKeys = box.checked ? [...state.falseKeys, c.key] : state.falseKeys.filter(k => k !== c.key);
+        setState({ falseKeys, outline: null });
+      });
+      list.appendChild(el("div", { class: "cond" }, [box, el("div", {}, [el("label", { for: "c_" + c.key, text: c.label + " → 거짓" }), el("div", {}, c.evidence.map(evidenceBadge))])]));
+    });
+    document.getElementById("devName").addEventListener("input", e => { state = { ...state, name: e.target.value, outline: null }; save(STORE, state); updateCompose(); });
+    document.getElementById("devDesc").addEventListener("input", e => { state = { ...state, desc: e.target.value }; save(STORE, state); });
+    sel.addEventListener("change", e => setState({ from: e.target.value, outline: null }));
+    document.getElementById("btnExample").addEventListener("click", () => { lastVanKey = null; setState({ ...EMPTY, ...EXAMPLE }); syncForm(); });
+    document.getElementById("btnClear").addEventListener("click", () => { lastVanKey = null; setState({ ...EMPTY }); syncForm(); });
+    document.getElementById("btnCompose").addEventListener("click", compose);
+  }
+  function syncForm() {
+    document.getElementById("devName").value = state.name;
+    document.getElementById("devDesc").value = state.desc;
+    document.getElementById("devFrom").value = state.from;
+    CONDITIONS.forEach(c => { document.getElementById("c_" + c.key).checked = state.falseKeys.includes(c.key); });
+  }
+
+  // ---- 사라진 사건 목록 ----
+  function renderVanished(states) {
+    const ids = vanishedIds(states), key = ids.join("|");
+    if (key === lastVanKey) return;
+    lastVanKey = key;
+    const box = document.getElementById("vanList");
+    box.innerHTML = "";
+    if (!ids.length) { box.appendChild(el("p", { class: "muted", text: "아직 사라지는 사건이 없어요. 장치가 없애는 조건을 체크해 보세요." })); return; }
+    ids.forEach(id => {
+      const ev = eventById(id);
+      const ta = el("textarea", { maxlength: "300", placeholder: "이 자리에서 대신 일어나는 일을 한두 문장으로 써 주세요." });
+      ta.value = state.replacements[id] || "";
+      ta.addEventListener("input", () => { state = { ...state, replacements: { ...state.replacements, [id]: ta.value }, outline: null }; save(STORE, state); updateCompose(); });
+      box.appendChild(el("div", { class: "van" }, [
+        el("div", {}, [el("b", { text: "✕ " + ev.label + " " }), ...ev.ids.map(evidenceBadge)]),
+        el("div", { class: "why", text: "왜 사라지나요? " + states[id].reason }),
+        el("label", { text: "대신 무슨 일이 일어나나요?", style: "margin-top:6px" }), ta
+      ]));
+    });
+  }
+
+  function composeProblems(states) {
+    const ids = vanishedIds(states);
+    const problems = [];
+    if (state.name.trim().length < MIN_NAME) problems.push("장치 이름을 " + MIN_NAME + "자 이상 적어 주세요.");
+    if (!state.falseKeys.length) problems.push("장치가 없애는 조건을 하나 이상 체크해 주세요.");
+    else if (!ids.length) problems.push("장치가 너무 늦게 나와서 사라지는 사건이 없어요. 등장 시점이나 조건을 다시 보세요.");
+    const empty = ids.filter(id => (state.replacements[id] || "").trim().length < MIN_REPL);
+    if (empty.length) problems.push("사라진 사건 " + empty.length + "개에 대체 문장(" + MIN_REPL + "자 이상)을 써 주세요.");
+    return problems;
+  }
+  function updateCompose() {
+    const problems = composeProblems(currentStates());
+    document.getElementById("btnCompose").disabled = problems.length > 0;
+    const hint = document.getElementById("composeHint");
+    hint.className = "hint" + (problems.length ? "" : " ok");
+    hint.textContent = problems.length ? problems[0] : "준비됐어요. 새 줄거리를 만들어 보세요.";
+  }
+
+  // ---- 새 줄거리 ----
+  function compose() {
+    const states = currentStates();
+    if (composeProblems(states).length) { updateCompose(); return; }
+    const items = EVENTS.map(ev => {
+      const s = states[ev.id];
+      const original = ev.ids.map(id => window.STORY.byId(id).text).join(" ");
+      if (s.state === "vanished") return { kind: "new", label: ev.label, text: state.replacements[ev.id].trim(), ids: [] };
+      return { kind: s.state === "changed" ? "changed" : "kept", label: ev.label, text: original, ids: ev.ids };
+    });
+    setState({ outline: items });
+  }
+  function renderOutline() {
+    const card = document.getElementById("outlineCard");
+    card.hidden = !state.outline;
+    if (!state.outline) return;
+    const ul = document.getElementById("outline");
+    ul.innerHTML = "";
+    ul.appendChild(el("li", { class: "kept" }, [el("span", { class: "tag", text: "장치" }), el("b", { text: state.name.trim() }), state.desc.trim() ? " — " + state.desc.trim() : ""]));
+    const tagText = { kept: "그대로", changed: "바뀜", new: "새로 씀" };
+    state.outline.forEach(it => {
+      ul.appendChild(el("li", { class: it.kind }, [
+        el("span", { class: "tag", text: tagText[it.kind] + " · " + it.label }),
+        ...it.ids.map(evidenceBadge),
+        el("div", { text: it.text }),
+        it.kind === "changed" ? el("small", { class: "muted", text: "장치 때문에 이 사건은 원작과 조금 달라질 수 있어요. 새 이야기를 쓸 때 다듬어 보세요." }) : ""
+      ].filter(Boolean)));
+    });
+    document.getElementById("plain").value = ["[장치] " + state.name.trim() + (state.desc.trim() ? " — " + state.desc.trim() : "")]
+      .concat(state.outline.map(it => it.text)).join("\n");
+  }
+
+  function render() {
+    const states = currentStates();
+    renderGraph(states);
+    renderVanished(states);
+    updateCompose();
+    renderOutline();
+  }
+
+  buildForm();
+  syncForm();
+  render();
+})();
+</script>
+</body>
+</html>
