@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>문제 상황 체험 시뮬레이션 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.tabs button { background: #fff; color: var(--muted); border-color: var(--line); }
+.tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.panel { display: none; }
+.panel.active { display: block; }
+.sim { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .sim { grid-template-columns: 1fr; } }
+.stage { background: linear-gradient(#e9f0f7, #fbf8f2 70%); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; min-height: 220px; position: relative; }
+.stage svg { width: 100%; height: auto; display: block; }
+.house-body { transform-box: view-box; transform-origin: 170px 152px; }
+.house-body.wobble { animation: wobble .6s ease-in-out; }
+.house-body.fall { animation: fall .9s ease-in forwards; }
+@keyframes wobble { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes fall { to { transform: rotate(70deg) translate(20px, 10px); opacity: .35; } }
+.puff { opacity: 0; font-size: 18px; fill: var(--wolf); font-weight: 700; }
+.puff.on { animation: puff .6s ease-out; }
+@keyframes puff { 0% { opacity: 0; transform: translateX(0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(40px); } }
+.range-label { display: flex; justify-content: space-between; font-weight: 600; font-size: .9rem; }
+.range-label .val { color: var(--accent); }
+.result { margin-top: 12px; padding: 12px; border-radius: 10px; background: #f6f2ea; }
+.result.ok { background: #e3f3e8; } .result.bad { background: #f9e0dd; } .result.warn { background: #fbf0d6; }
+.track { position: relative; height: 80px; margin: 18px 0 6px; }
+.track .line { position: absolute; left: 24px; right: 24px; top: 40px; height: 4px; background: var(--line); border-radius: 2px; }
+.track .dot { position: absolute; width: 30px; height: 30px; border-radius: 50%; margin-left: -15px; text-align: center; line-height: 30px; font-size: .78rem; color: #fff; font-weight: 700; left: 24px; }
+.track .pig { background: #e08aa0; top: 6px; }
+.track .wolf { background: var(--wolf); top: 46px; }
+.track .home { position: absolute; right: 4px; top: 22px; font-size: 1.4rem; }
+.track .start { position: absolute; left: 4px; top: 22px; font-size: .8rem; color: var(--muted); }
+.bars { margin-top: 10px; }
+.bar { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: .9rem; }
+.bar .name { width: 130px; font-weight: 600; }
+.bar .fill { height: 18px; border-radius: 6px; background: var(--wolf); min-width: 4px; transition: width .4s; }
+.bar .fill.food { background: var(--ok); }
+.problem { margin-top: 16px; }
+.saved { font-size: .8rem; color: var(--ok); margin-left: 8px; }
+.list-item { border-bottom: 1px solid var(--line); padding: 8px 0; }
+.list-item .tag { font-size: .8rem; color: var(--accent); font-weight: 600; }
+.note { font-size: .85rem; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body data-stage="2단계 문제 인식" data-who="교사" data-title="문제 상황 체험 시뮬레이션">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 확산(열거) → 수렴(정의), 연역(제약 도출)</div>
+    <p>이야기 속 세 가지 위험을 숫자로 바꿔 직접 만져 봅니다. 값을 바꾸면 결과가 달라져요. 그 결과를 보면서 "그래서 진짜 문제는 무엇인가?"를 한 문장으로 적는 것이 이 앱의 목표예요. 모든 규칙은 책의 문장에서 가져왔고, 문장 번호를 누르면 원문이 보여요.</p>
+  </div>
+
+  <div class="tabs" id="tabs">
+    <button data-tab="wind" class="active">🌬️ 바람 vs 재료</button>
+    <button data-tab="chase">🌙 늑대가 오는 밤</button>
+    <button data-tab="food">🥕 식량 계산기</button>
+    <button data-tab="list">📋 문제 목록 보기</button>
+  </div>
+
+  <!-- (a) 바람 vs 재료 -->
+  <section class="panel active" id="panel-wind">
+    <div class="sim">
+      <div class="card">
+        <h3>재료를 고르고 늑대가 불게 하세요</h3>
+        <div class="field">
+          <label>집 재료</label>
+          <div class="row">
+            <label><input type="radio" name="mat" value="straw" checked> 짚</label>
+            <label><input type="radio" name="mat" value="stick"> 나뭇가지</label>
+            <label><input type="radio" name="mat" value="brick"> 벽돌</label>
+            <label><input type="radio" name="mat" value="custom"> 내 재료</label>
+          </div>
+        </div>
+        <div class="field" id="custom-field" hidden>
+          <div class="range-label"><span>내 재료의 튼튼함</span><span class="val" id="strength-val">5</span></div>
+          <input type="range" id="strength" min="1" max="10" value="5">
+          <div class="note">책에는 없는 재료예요. 얼마나 버틸지는 여러분이 정한 값이에요.</div>
+        </div>
+        <div class="field">
+          <div class="range-label"><span>늑대 입김 횟수</span><span class="val" id="blows-val">1</span></div>
+          <input type="range" id="blows" min="1" max="6" value="1">
+        </div>
+        <div class="row">
+          <button id="blow-btn">후~ 불기</button>
+          <button class="ghost" id="reset-house">집 다시 세우기</button>
+        </div>
+        <div class="result" id="wind-result">재료를 고르고 "후~ 불기"를 눌러 보세요.</div>
+      </div>
+      <div class="stage">
+        <svg viewBox="0 0 260 170" aria-label="집과 늑대">
+          <line x1="0" y1="152" x2="260" y2="152" stroke="#cfc4b2" stroke-width="2"/>
+          <g><circle cx="30" cy="120" r="16" fill="#4a4f5c"/><polygon points="18,108 24,96 30,108" fill="#4a4f5c"/><polygon points="30,108 36,96 42,108" fill="#4a4f5c"/><circle cx="34" cy="118" r="2" fill="#fff"/><rect x="18" y="134" width="24" height="18" rx="4" fill="#4a4f5c"/></g>
+          <text id="puff" class="puff" x="52" y="118">후~</text>
+          <g class="house-body" id="house">
+            <rect id="wall" x="120" y="82" width="100" height="70" fill="#e2b04a"/>
+            <polygon points="110,82 170,36 230,82" fill="#7a4b2a"/>
+            <rect x="160" y="112" width="20" height="40" fill="#5b3a1e"/>
+            <rect x="132" y="96" width="18" height="16" fill="#fff8e6"/>
+          </g>
+          <text id="house-label" x="170" y="166" text-anchor="middle" font-size="11" fill="#6f675d">짚집</text>
+        </svg>
+      </div>
+    </div>
+    <div class="problem card" data-key="wind">
+      <h3>그래서 문제는 무엇일까요?</h3>
+      <div class="grid three">
+        <div><label>누가</label><input type="text" data-f="who" placeholder="예: 첫째 돼지"></div>
+        <div><label>무엇이 (필요한 것)</label><input type="text" data-f="what" placeholder="예: 바람에 버티는 벽"></div>
+        <div><label>왜 (책의 어떤 사실 때문에)</label><input type="text" data-f="why" placeholder="예: 한 번 불자 날아갔으니까 (문장 20)"></div>
+      </div>
+      <div class="row" style="margin-top:8px"><span class="muted">입력하면 바로 저장돼요.</span><span class="saved" data-saved></span></div>
+    </div>
+  </section>
+
+  <!-- (b) 늑대가 오는 밤 -->
+  <section class="panel" id="panel-chase">
+    <div class="sim">
+      <div class="card">
+        <h3>짚집이 날아갔어요. 다음 집까지 달려요</h3>
+        <p class="muted">첫째는 "겨우" 도망쳤어요 <span class="evidence" data-q="21">문장 21</span> <span class="evidence" data-q="26">문장 26</span>. 얼마나 아슬아슬했을까요?</p>
+        <div class="field"><div class="range-label"><span>집 사이 거리</span><span class="val"><span id="dist-val">200</span> m</span></div><input type="range" id="dist" min="50" max="500" step="10" value="200"></div>
+        <div class="field"><div class="range-label"><span>돼지 속도</span><span class="val"><span id="pig-val">3</span> m/s</span></div><input type="range" id="pig" min="1" max="6" step="0.5" value="3"></div>
+        <div class="field"><div class="range-label"><span>늑대 속도</span><span class="val"><span id="wolf-val">5</span> m/s</span></div><input type="range" id="wolf" min="2" max="8" step="0.5" value="5"></div>
+        <div class="field"><div class="range-label"><span>늑대가 눈치채기까지 걸린 시간</span><span class="val"><span id="head-val">30</span> 초</span></div><input type="range" id="head" min="0" max="60" step="1" value="30"></div>
+        <div class="row"><button id="run-chase">달리기 시작</button></div>
+        <div class="result" id="chase-result"></div>
+      </div>
+      <div class="stage">
+        <div class="track">
+          <span class="start">짚집</span><span class="home">🏠</span>
+          <div class="line"></div>
+          <div class="dot pig" id="dot-pig">돼지</div>
+          <div class="dot wolf" id="dot-wolf">늑대</div>
+        </div>
+        <div class="note" id="chase-live">값을 바꾸면 계산이 바로 바뀌어요. "달리기 시작"을 누르면 움직여요.</div>
+      </div>
+    </div>
+    <div class="problem card" data-key="chase">
+      <h3>그래서 문제는 무엇일까요?</h3>
+      <div class="grid three">
+        <div><label>누가</label><input type="text" data-f="who" placeholder="예: 첫째와 둘째 돼지"></div>
+        <div><label>무엇이 (필요한 것)</label><input type="text" data-f="what" placeholder="예: 늑대보다 먼저 도착할 방법"></div>
+        <div><label>왜 (책의 어떤 사실 때문에)</label><input type="text" data-f="why" placeholder="예: 숨이 턱에 차도록 달렸으니까 (문장 26)"></div>
+      </div>
+      <div class="row" style="margin-top:8px"><span class="muted">입력하면 바로 저장돼요.</span><span class="saved" data-saved></span></div>
+    </div>
+  </section>
+
+  <!-- (c) 식량 계산기 -->
+  <section class="panel" id="panel-food">
+    <div class="sim">
+      <div class="card">
+        <h3>늑대가 벽돌집 앞에서 버티면?</h3>
+        <p class="muted">늑대는 포기하지 않아요 <span class="evidence" data-q="30">문장 30</span>. 셋째는 순무 <span class="evidence" data-q="32">문장 32</span>와 사과 <span class="evidence" data-q="35">문장 35</span>를 구하러 몰래 나갔어요.</p>
+        <div class="field"><div class="range-label"><span>늑대가 포위하는 날 수</span><span class="val"><span id="siege-val">7</span> 일</span></div><input type="range" id="siege" min="1" max="14" value="7"></div>
+        <div class="field"><div class="range-label"><span>집 안의 돼지 수</span><span class="val"><span id="pigs-val">3</span> 마리</span></div><input type="range" id="pigs" min="1" max="3" value="3"></div>
+        <div class="field"><div class="range-label"><span>돼지 한 마리가 하루에 먹는 양</span><span class="val"><span id="perday-val">2</span> 개</span></div><input type="range" id="perday" min="1" max="5" value="2"></div>
+        <div class="grid two">
+          <div class="field"><label>저장한 순무 (0~60)</label><input type="number" id="turnip" min="0" max="60" value="20"></div>
+          <div class="field"><label>저장한 사과 (0~60)</label><input type="number" id="apple" min="0" max="60" value="10"></div>
+        </div>
+        <div class="note" id="food-msg"></div>
+      </div>
+      <div class="card">
+        <h3>버틸 수 있는 날 vs 포위 날</h3>
+        <div class="bars">
+          <div class="bar"><span class="name">먹을 수 있는 날</span><div class="fill food" id="bar-food"></div><span id="bar-food-n"></span></div>
+          <div class="bar"><span class="name">늑대 포위 날</span><div class="fill" id="bar-siege"></div><span id="bar-siege-n"></span></div>
+        </div>
+        <div class="result" id="food-result"></div>
+      </div>
+    </div>
+    <div class="problem card" data-key="food">
+      <h3>그래서 문제는 무엇일까요?</h3>
+      <div class="grid three">
+        <div><label>누가</label><input type="text" data-f="who" placeholder="예: 삼형제"></div>
+        <div><label>무엇이 (필요한 것)</label><input type="text" data-f="what" placeholder="예: 집 밖에 나가지 않고 먹을 것을 구할 방법"></div>
+        <div><label>왜 (책의 어떤 사실 때문에)</label><input type="text" data-f="why" placeholder="예: 늑대가 포기하지 않으니까 (문장 30)"></div>
+      </div>
+      <div class="row" style="margin-top:8px"><span class="muted">입력하면 바로 저장돼요.</span><span class="saved" data-saved></span></div>
+    </div>
+  </section>
+
+  <!-- 문제 목록 -->
+  <section class="panel" id="panel-list">
+    <div class="card">
+      <h3>세 가지 체험에서 찾은 문제</h3>
+      <p class="muted">비어 있는 칸은 아직 안 쓴 거예요. 세 문제가 서로 어떻게 다른지, 하나로 묶을 수 있는지 이야기해 보세요.</p>
+      <div id="problem-list"></div>
+      <div class="row" style="margin-top:10px"><button class="ghost" id="clear-problems">모두 지우기</button></div>
+    </div>
+  </section>
+
+  <div class="teacher-note"><b>교사 노트.</b> 수업에서는 탭 하나당 5분씩, 학생이 값을 극단으로 밀어 보게 합니다(짚집에 6번, 늑대 속도 최고 등). 그 뒤 "그래서 문제는 무엇일까요?"의 세 칸을 채우게 하고, 문제 목록 탭에서 세 문제를 나란히 놓고 비교합니다. <b>관찰 포인트:</b> 학생이 "무엇이" 칸에 해결책(벽돌집)을 쓰는지, 필요(바람에 버티는 벽)를 쓰는지 — 문제와 해결을 구분하는 순간이 보입니다. "왜" 칸에 문장 번호를 붙이는 학생은 근거 기반 사고를 시작한 것입니다. <b>명세:</b> 기능 — 세 개의 탭(재료/추격/식량), 각 탭마다 슬라이더 입력과 즉시 계산, 결과에 근거 문장 배지, 탭마다 문제 정의 3칸(누가/무엇이/왜)을 localStorage에 저장, 목록 탭에서 합쳐 보기. 입력 — 재료(짚/나뭇가지/벽돌/내 재료+튼튼함 1~10), 입김 1~6; 거리 50~500m, 돼지 1~6m/s, 늑대 2~8m/s, 눈치채기 0~60초; 포위 1~14일, 돼지 1~3, 하루 1~5개, 순무·사과 0~60. 출력 — 집이 버티는지/무너지는지(짚 1번=문장 20, 나뭇가지 2번=문장 25, 벽돌 5번 이상=문장 29), 도착 시간 차(초), 버틸 수 있는 날 vs 포위 날 막대. 성공 조건 — 책에 나온 값에서는 책과 같은 결과가 나오고, 책에 없는 값(내 재료, 6번째 입김)은 "우리의 추측"이라고 표시된다. 숫자 범위를 벗어나면 안내 문구가 뜬다.</div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const KEY = (tab) => "ne.sims.problem." + tab;
+  const TABS = ["wind", "chase", "food", "list"];
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  /* ---------- 탭 ---------- */
+  function showTab(name) {
+    TABS.forEach(t => { $("panel-" + t).classList.toggle("active", t === name); });
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    if (name === "list") renderList();
+  }
+  document.querySelectorAll("#tabs button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  document.querySelectorAll(".evidence[data-q]").forEach(e => e.addEventListener("click", () => NE.showQuote(Number(e.dataset.q))));
+
+  /* ---------- (a) 바람 vs 재료 ---------- */
+  const MATERIALS = {
+    straw:  { label: "짚집",       color: "#e2b04a", survives: 0, build: 8,  fall: 20, fallText: "짚집은 한 번에 날아가 버렸어요." },
+    stick:  { label: "나뭇가지집", color: "#8a6a3f", survives: 1, build: 11, fall: 25, fallText: "두 번 불자 와르르 무너졌어요." },
+    brick:  { label: "벽돌집",     color: "#b3452f", survives: 6, build: 14, fall: 29, fallText: "다섯 번 불어도 꿈쩍하지 않았어요." },
+    custom: { label: "내 재료 집", color: "#7f8c8d", survives: null, build: null, fall: null, fallText: "" }
+  };
+  const BOOK_MAX_BLOWS = 5;
+  const MAX_BLOWS = 6;
+  const strengthToBlows = (s) => Math.floor((clamp(s, 1, 10) - 1) * MAX_BLOWS / 9);
+
+  function readWind() {
+    const mat = document.querySelector('input[name="mat"]:checked').value;
+    const strength = Number($("strength").value);
+    const blows = Number($("blows").value);
+    const info = MATERIALS[mat];
+    const survives = mat === "custom" ? strengthToBlows(strength) : info.survives;
+    return { mat, strength, blows, survives, info };
+  }
+
+  function windOutcome(p) {
+    const falls = p.blows > p.survives;
+    const guess = p.mat === "brick" && p.blows > BOOK_MAX_BLOWS;
+    return { falls, guess, fallAt: p.survives + 1 };
+  }
+
+  function renderWindResult(p, o) {
+    const box = $("wind-result");
+    box.className = "result " + (o.falls ? "bad" : "ok");
+    box.innerHTML = "";
+    const head = o.falls
+      ? p.info.label + "이(가) " + Math.min(o.fallAt, p.blows) + "번째 입김에 무너졌어요."
+      : p.info.label + "이(가) " + p.blows + "번을 버텼어요.";
+    box.appendChild(NE.el("div", { text: head, style: "font-weight:700" }));
+    if (p.mat === "custom") {
+      box.appendChild(NE.el("div", { class: "note", text: "책에는 없는 재료예요. 튼튼함 " + p.strength + "이면 입김 " + p.survives + "번까지 버틴다고 정했어요. 얼마나 버틸지는 여러분이 정한 값이에요." }));
+      return;
+    }
+    box.appendChild(NE.el("div", { class: "note" }, ["책의 근거: " + p.info.fallText + " ", NE.evidenceBadge(p.info.fall), NE.evidenceBadge(p.info.build)]));
+    if (o.guess) {
+      box.appendChild(NE.el("div", { class: "note" }, ["책에는 다섯 번까지만 나와요 ", NE.evidenceBadge(29), " 여섯 번째는 우리의 추측이에요."]));
+    }
+  }
+
+  function paintHouse(p) {
+    const color = p.mat === "custom" ? "hsl(" + (200 + p.strength * 10) + ", 25%, " + (70 - p.strength * 3) + "%)" : p.info.color;
+    $("wall").setAttribute("fill", color);
+    $("house-label").textContent = p.info.label + (p.mat === "custom" ? " (튼튼함 " + p.strength + ")" : "");
+  }
+
+  const setHouseClass = (cls) => { $("house").setAttribute("class", cls); };
+  const restartPuff = (label) => {
+    const puff = $("puff");
+    puff.classList.remove("on"); void puff.getBoundingClientRect();
+    puff.textContent = label; puff.classList.add("on");
+  };
+
+  let blowing = false;
+  function blowSequence() {
+    if (blowing) return;
+    const p = readWind();
+    const o = windOutcome(p);
+    paintHouse(p);
+    setHouseClass("house-body");
+    blowing = true;
+    $("blow-btn").disabled = true;
+    const finish = () => { blowing = false; $("blow-btn").disabled = false; renderWindResult(p, o); };
+    const step = (i) => {
+      if (i > p.blows) { finish(); return; }
+      restartPuff("후~ " + i);
+      if (i > p.survives) { setHouseClass("house-body fall"); setTimeout(finish, 900); return; }
+      setHouseClass("house-body"); void $("house").getBoundingClientRect();
+      setHouseClass("house-body wobble");
+      setTimeout(() => step(i + 1), 700);
+    };
+    step(1);
+  }
+
+  function resetHouse() {
+    if (blowing) return;
+    setHouseClass("house-body");
+    $("puff").classList.remove("on");
+    paintHouse(readWind());
+    $("wind-result").className = "result";
+    $("wind-result").textContent = "집을 다시 세웠어요. 다시 불어 보세요.";
+  }
+
+  document.querySelectorAll('input[name="mat"]').forEach(r => r.addEventListener("change", () => {
+    $("custom-field").hidden = readWind().mat !== "custom";
+    resetHouse();
+  }));
+  $("strength").addEventListener("input", () => { $("strength-val").textContent = $("strength").value; paintHouse(readWind()); });
+  $("blows").addEventListener("input", () => { $("blows-val").textContent = $("blows").value; });
+  $("blow-btn").addEventListener("click", blowSequence);
+  $("reset-house").addEventListener("click", resetHouse);
+
+  /* ---------- (b) 늑대가 오는 밤 ---------- */
+  const CLOSE_CALL_SEC = 5;
+  const ANIM_MS = 4000;
+  const CHASE_KEYS = ["dist", "pig", "wolf", "head"];
+
+  function readChase() {
+    return CHASE_KEYS.reduce((acc, k) => ({ ...acc, [k]: Number($(k).value) }), {});
+  }
+  function chaseCalc(p) {
+    const pigT = p.dist / p.pig;
+    const wolfT = p.head + p.dist / p.wolf;
+    return { pigT, wolfT, diff: wolfT - pigT, pigFirst: pigT < wolfT };
+  }
+  function chaseText(c) {
+    const d = Math.abs(c.diff).toFixed(1);
+    if (!c.pigFirst) return { cls: "bad", text: "늑대가 " + d + "초 먼저 와요. 돼지는 잡혀요." };
+    if (c.diff < CLOSE_CALL_SEC) return { cls: "warn", text: "돼지가 " + d + "초 차이로 먼저 도착해요. 책처럼 \"겨우\" 도망친 거예요." };
+    return { cls: "ok", text: "돼지가 " + d + "초 먼저 도착해요. 이번엔 여유가 있었네요." };
+  }
+  function renderChaseLive() {
+    CHASE_KEYS.forEach(k => { $(k + "-val").textContent = $(k).value; });
+    const p = readChase();
+    const c = chaseCalc(p);
+    $("chase-live").textContent = "돼지 도착 " + c.pigT.toFixed(1) + "초 · 늑대 도착 " + c.wolfT.toFixed(1) + "초 (눈치채기 " + p.head + "초 + 달리기 " + (p.dist / p.wolf).toFixed(1) + "초)";
+    const r = chaseText(c);
+    const box = $("chase-result");
+    box.className = "result " + r.cls;
+    box.innerHTML = "";
+    box.appendChild(NE.el("div", { text: r.text, style: "font-weight:700" }));
+    box.appendChild(NE.el("div", { class: "note" }, ["책에서는 두 번 다 겨우 도망쳤어요. ", NE.evidenceBadge(21), NE.evidenceBadge(26), " 어떤 값일 때 책과 비슷해질까요?"]));
+  }
+
+  let raf = null;
+  function runChase() {
+    if (raf) cancelAnimationFrame(raf);
+    const p = readChase();
+    const c = chaseCalc(p);
+    const scale = Math.max(c.pigT, c.wolfT, 1) / ANIM_MS;
+    const start = performance.now();
+    const place = (id, pos) => { $(id).style.left = "calc(24px + (100% - 48px) * " + clamp(pos / p.dist, 0, 1) + ")"; };
+    const frame = (now) => {
+      const t = (now - start) * scale;
+      const pigPos = Math.min(p.dist, p.pig * t);
+      const wolfPos = clamp((t - p.head) * p.wolf, 0, p.dist);
+      place("dot-pig", pigPos); place("dot-wolf", wolfPos);
+      const caught = t > p.head && wolfPos >= pigPos && pigPos < p.dist;
+      const safe = pigPos >= p.dist;
+      if (caught || safe) { raf = null; return; }
+      raf = requestAnimationFrame(frame);
+    };
+    place("dot-pig", 0); place("dot-wolf", 0);
+    raf = requestAnimationFrame(frame);
+  }
+  CHASE_KEYS.forEach(k => $(k).addEventListener("input", renderChaseLive));
+  $("run-chase").addEventListener("click", runChase);
+
+  /* ---------- (c) 식량 계산기 ---------- */
+  const FOOD_MAX = 60;
+  function readFood() {
+    return {
+      siege: Number($("siege").value), pigs: Number($("pigs").value), perDay: Number($("perday").value),
+      turnip: Number($("turnip").value), apple: Number($("apple").value)
+    };
+  }
+  function validateFood(p) {
+    const inRange = (v) => Number.isInteger(v) && v >= 0 && v <= FOOD_MAX;
+    return [
+      inRange(p.turnip) ? null : "순무는 0~60 사이의 정수여야 해요.",
+      inRange(p.apple) ? null : "사과는 0~60 사이의 정수여야 해요."
+    ].filter(Boolean);
+  }
+  function foodCalc(p) {
+    const daily = p.pigs * p.perDay;
+    const days = Math.floor((p.turnip + p.apple) / daily);
+    return { daily, days, ok: days >= p.siege, short: Math.max(0, p.siege - days) };
+  }
+  function renderFood() {
+    ["siege", "pigs", "perday"].forEach(k => { $(k + "-val").textContent = $(k).value; });
+    const p = readFood();
+    const errs = validateFood(p);
+    $("food-msg").textContent = errs.join(" ");
+    $("food-msg").style.color = errs.length ? "var(--bad)" : "";
+    const box = $("food-result");
+    if (errs.length) { box.className = "result bad"; box.textContent = "숫자를 고쳐 주세요."; return; }
+    const f = foodCalc(p);
+    const maxDays = Math.max(p.siege, f.days, 1);
+    $("bar-food").style.width = (f.days / maxDays * 100) + "%"; $("bar-food-n").textContent = f.days + "일";
+    $("bar-siege").style.width = (p.siege / maxDays * 100) + "%"; $("bar-siege-n").textContent = p.siege + "일";
+    box.className = "result " + (f.ok ? "ok" : "bad");
+    box.innerHTML = "";
+    const head = f.ok
+      ? "먹을 것이 " + f.days + "일치 있어요. " + p.siege + "일 포위를 버틸 수 있어요."
+      : "먹을 것이 " + f.days + "일치뿐이에요. " + f.short + "일이 모자라요.";
+    box.appendChild(NE.el("div", { text: head, style: "font-weight:700" }));
+    box.appendChild(NE.el("div", { class: "note", text: "하루에 " + p.pigs + "마리 × " + p.perDay + "개 = " + f.daily + "개씩 먹어요." }));
+    box.appendChild(NE.el("div", { class: "note" }, [
+      "책에서 셋째는 늑대보다 먼저 나가 순무를 캐 왔고 ", NE.evidenceBadge(32), " 사과나무는 멀어서 위험했어요 ", NE.evidenceBadge(35), " 늑대는 포기하지 않아요 ", NE.evidenceBadge(30)
+    ]));
+  }
+  ["siege", "pigs", "perday", "turnip", "apple"].forEach(k => $(k).addEventListener("input", renderFood));
+
+  /* ---------- 문제 정의 저장 ---------- */
+  const EMPTY_PROBLEM = { who: "", what: "", why: "" };
+  const TAB_NAMES = { wind: "바람 vs 재료", chase: "늑대가 오는 밤", food: "식량 계산기" };
+  const loadProblem = (tab) => ({ ...EMPTY_PROBLEM, ...NE.load(KEY(tab), {}) });
+
+  document.querySelectorAll(".problem[data-key]").forEach(box => {
+    const tab = box.dataset.key;
+    const inputs = Array.from(box.querySelectorAll("input[data-f]"));
+    const saved = box.querySelector("[data-saved]");
+    const current = loadProblem(tab);
+    inputs.forEach(i => { i.value = current[i.dataset.f] || ""; });
+    inputs.forEach(i => i.addEventListener("input", () => {
+      const next = inputs.reduce((acc, x) => ({ ...acc, [x.dataset.f]: x.value.trim() }), { ...EMPTY_PROBLEM });
+      const ok = NE.save(KEY(tab), next);
+      saved.textContent = ok ? "저장됨 ✓" : "저장에 실패했어요. 브라우저 저장 공간을 확인해 주세요.";
+      saved.style.color = ok ? "" : "var(--bad)";
+    }));
+  });
+
+  function renderList() {
+    const list = $("problem-list");
+    list.innerHTML = "";
+    Object.keys(TAB_NAMES).forEach(tab => {
+      const p = loadProblem(tab);
+      const filled = p.who || p.what || p.why;
+      const sentence = filled
+        ? (p.who || "(누가?)") + "은(는) " + (p.why || "(왜?)") + " 때문에 " + (p.what || "(무엇이?)") + "이(가) 필요해요."
+        : "아직 적지 않았어요.";
+      list.appendChild(NE.el("div", { class: "list-item" }, [
+        NE.el("div", { class: "tag", text: TAB_NAMES[tab] }),
+        NE.el("div", { text: sentence, style: filled ? "" : "color:var(--muted)" })
+      ]));
+    });
+  }
+  $("clear-problems").addEventListener("click", () => {
+    if (!confirm("세 탭의 문제를 모두 지울까요?")) return;
+    Object.keys(TAB_NAMES).forEach(tab => NE.save(KEY(tab), { ...EMPTY_PROBLEM }));
+    document.querySelectorAll(".problem input[data-f]").forEach(i => { i.value = ""; });
+    renderList();
+  });
+
+  /* ---------- 시작 ---------- */
+  paintHouse(readWind());
+  renderChaseLive();
+  renderFood();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>익명 문제 보드 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+.phases { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.phases button { background: #fff; color: var(--muted); border-color: var(--line); }
+.phases button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.phases .arrow { color: var(--muted); }
+.phases .spacer { flex: 1; }
+.notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 14px; }
+.sticky { background: #fff9d6; border-radius: 6px; padding: 12px 12px 10px; box-shadow: 2px 3px 8px rgba(43,38,32,.12); border-left: 6px solid var(--line); position: relative; min-height: 120px; display: flex; flex-direction: column; gap: 6px; }
+.sticky .who { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.sticky .text { flex: 1; font-size: .95rem; }
+.sticky .ev { display: flex; flex-wrap: wrap; gap: 2px; }
+.sticky .tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: .85rem; }
+.sticky select { width: auto; padding: 4px 6px; font-size: .85rem; }
+.sticky .x { position: absolute; top: 4px; right: 6px; border: 0; background: transparent; color: var(--muted); padding: 0 4px; font-size: 1rem; }
+.dots { letter-spacing: 2px; color: var(--accent); font-size: 1rem; }
+.picker .results { border: 1px solid var(--line); border-radius: 8px; background: #fff; max-height: 180px; overflow: auto; margin-top: 4px; }
+.picker .results:empty { display: none; }
+.picker .hit { padding: 6px 10px; font-size: .9rem; cursor: pointer; border-bottom: 1px solid var(--line); }
+.picker .hit:hover { background: var(--accent-soft); }
+.picker .hit .n { color: var(--muted); font-size: .8rem; margin-right: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.chip { display: inline-flex; align-items: center; gap: 2px; }
+.chip button { padding: 0 6px; border: 0; background: transparent; color: var(--muted); font-size: .9rem; }
+.msg { font-size: .88rem; margin-top: 6px; min-height: 1.2em; }
+.msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
+.group-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.group-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: #fff; border: 1px solid var(--line); font-size: .88rem; }
+.group-pill .sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.group-pill button { padding: 0 4px; border: 0; background: transparent; color: var(--muted); }
+.summary { margin-top: 16px; }
+.sum-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: .9rem; }
+.sum-row .name { width: 160px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.sum-row .fill { height: 16px; border-radius: 6px; min-width: 3px; transition: width .3s; }
+.top { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); }
+</style>
+</head>
+<body data-stage="2단계 문제 인식" data-who="교사" data-title="익명 문제 보드">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 확산(열거) → 수렴(정의), 연역(제약 도출)</div>
+    <p>이름 없이 문제를 붙이는 보드예요. 먼저 생각나는 문제를 모두 붙이고(열거), 비슷한 것끼리 묶은 다음(묶기), 점 세 개로 가장 중요한 문제를 고릅니다(고르기). 문제마다 책의 문장을 하나 이상 붙여야 해요. 근거 없는 문제는 붙일 수 없어요.</p>
+  </div>
+
+  <div class="phases" id="phases">
+    <button data-phase="enumerate">① 열거</button><span class="arrow">→</span>
+    <button data-phase="group">② 묶기</button><span class="arrow">→</span>
+    <button data-phase="vote">③ 고르기</button>
+    <span class="spacer"></span>
+    <button class="secondary" id="seed">예시 채우기</button>
+    <button class="ghost" id="clear-all">보드 비우기</button>
+  </div>
+
+  <div class="card" id="tool"></div>
+  <div class="notes" id="notes"></div>
+  <div class="card summary" id="summary"></div>
+
+  <div class="teacher-note"><b>교사 노트.</b> 한 대의 교사 컴퓨터를 화면에 띄우고, 학생이 돌아가며 붙이거나 교사가 받아 적습니다(이름을 묻지 않습니다). 열거 단계에서는 "좋은 문제인가"를 평가하지 말고 개수만 늘립니다. 묶기 단계에서 묶이지 않은 쪽지가 남으면 "이건 어느 묶음과 같은 종류일까?"를 학급에 묻습니다. <b>관찰 포인트:</b> 같은 문장(예: 문장 20)에서 서로 다른 문제를 뽑아내는 학생이 있는지, 묶음의 이름을 "집" 같은 사물이 아니라 "바람에 약함" 같은 필요로 붙이는지. 투표가 한쪽으로 쏠리면 근거 문장이 많은 문제인지 확인합니다. <b>명세:</b> 기능 — 세 단계(열거/묶기/고르기) 전환, 쪽지 추가(인물+문장+근거 검색 선택), 묶음 만들기와 색 지정, 쪽지에 묶음 배정, 묶이지 않은 쪽지 표시, 한 세션에 점 3개 투표와 초기화, 묶음별 요약 막대와 최다 득표 문제 표시, 예시 6개 채우기, localStorage 저장. 입력 — 인물(select), 문제 한 문장(비어 있으면 거부), 근거 문장(검색해서 1개 이상 필수), 묶음 이름(비어 있거나 중복이면 거부). 출력 — 색 띠가 붙은 쪽지, 묶음별 쪽지 수·점 수, 최다 득표 쪽지. 성공 조건 — 근거 없는 쪽지는 만들어지지 않고, 점은 3개를 넘지 않으며, 새로고침해도 보드가 남아 있다.</div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const KEY = "ne.board";
+  const MAX_VOTES = 3;
+  const COLORS = ["#e2b04a", "#8a6a3f", "#b3452f", "#3a8f5a", "#4a6fa5", "#8e5ea2"];
+  const PHASES = { enumerate: "열거", group: "묶기", vote: "고르기" };
+  const EMPTY = { phase: "enumerate", notes: [], groups: [], votesUsed: 0 };
+  const charName = (id) => { const c = STORY.characters.find(x => x.id === id); return c ? c.name : id; };
+
+  let state = { ...EMPTY, ...NE.load(KEY, {}) };
+  function setState(patch) {
+    state = { ...state, ...patch };
+    if (!NE.save(KEY, state)) $("summary").prepend(NE.el("div", { class: "msg bad", text: "저장에 실패했어요. 브라우저 저장 공간을 확인해 주세요." }));
+    render();
+  }
+
+  /* ---------- 근거 문장 검색 선택기 ---------- */
+  function makePicker(selected, onChange) {
+    const chips = NE.el("div", { class: "chips" }, selected.map(id => NE.el("span", { class: "chip" }, [
+      NE.evidenceBadge(id),
+      NE.el("button", { type: "button", text: "×", title: "빼기", onclick: () => onChange(selected.filter(x => x !== id)) })
+    ])));
+    const results = NE.el("div", { class: "results" });
+    const input = NE.el("input", { type: "text", placeholder: "낱말로 원문 찾기 (예: 짚, 늑대, 문, 순무)" });
+    input.addEventListener("input", () => {
+      results.innerHTML = "";
+      STORY.search(input.value).slice(0, 6).forEach(s => {
+        results.appendChild(NE.el("div", { class: "hit", onclick: () => onChange(selected.includes(s.id) ? selected : [...selected, s.id]) }, [
+          NE.el("span", { class: "n", text: "문장 " + s.id }), s.text
+        ]));
+      });
+      if (input.value.trim() && !results.childNodes.length) results.appendChild(NE.el("div", { class: "hit muted", text: "맞는 문장이 없어요. 다른 낱말로 찾아보세요." }));
+    });
+    return NE.el("div", { class: "picker" }, [chips, input, results]);
+  }
+
+  /* ---------- 단계별 도구 ---------- */
+  let draft = { who: "first", text: "", evidence: [] };
+  function renderEnumerateTool() {
+    const whoSel = NE.el("select", { onchange: (e) => { draft = { ...draft, who: e.target.value }; } },
+      STORY.characters.map(c => NE.el("option", { value: c.id, text: c.name })));
+    whoSel.value = draft.who;
+    const textIn = NE.el("input", { type: "text", value: draft.text, placeholder: "예: 짚집은 바람 한 번에 날아가서 살 곳이 없어요", oninput: (e) => { draft = { ...draft, text: e.target.value }; } });
+    const msg = NE.el("div", { class: "msg" });
+    const add = () => {
+      const errs = validateNote(draft);
+      if (errs.length) { msg.className = "msg bad"; msg.textContent = errs.join(" "); return; }
+      const note = { id: NE.uid(), who: draft.who, text: draft.text.trim(), evidence: [...draft.evidence], group: null, votes: 0 };
+      draft = { ...draft, text: "", evidence: [] };
+      setState({ notes: [...state.notes, note] });
+    };
+    return NE.el("div", {}, [
+      NE.el("h3", { text: "① 열거 · 생각나는 문제를 모두 붙여요" }),
+      NE.el("div", { class: "grid two" }, [
+        NE.el("div", { class: "field" }, [NE.el("label", { text: "누구의 문제인가요?" }), whoSel]),
+        NE.el("div", { class: "field" }, [NE.el("label", { text: "문제 한 문장" }), textIn])
+      ]),
+      NE.el("div", { class: "field" }, [NE.el("label", { text: "근거 문장 (1개 이상)" }), makePicker(draft.evidence, (ev) => { draft = { ...draft, evidence: ev }; render(); })]),
+      NE.el("div", { class: "row" }, [NE.el("button", { text: "쪽지 붙이기", onclick: add }), NE.el("span", { class: "muted", text: "지금 " + state.notes.length + "장" })]),
+      msg
+    ]);
+  }
+  function validateNote(d) {
+    return [
+      d.text.trim().length < 2 ? "문제를 한 문장으로 적어 주세요." : null,
+      d.evidence.length === 0 ? "책에서 근거 문장을 하나 이상 골라 주세요." : null
+    ].filter(Boolean);
+  }
+
+  function renderGroupTool() {
+    const nameIn = NE.el("input", { type: "text", placeholder: "묶음 이름 (예: 집이 약해요)" });
+    const msg = NE.el("div", { class: "msg" });
+    const addGroup = () => {
+      const name = nameIn.value.trim();
+      if (!name) { msg.className = "msg bad"; msg.textContent = "묶음 이름을 적어 주세요."; return; }
+      if (state.groups.some(g => g.name === name)) { msg.className = "msg bad"; msg.textContent = "같은 이름의 묶음이 이미 있어요."; return; }
+      const color = COLORS[state.groups.length % COLORS.length];
+      setState({ groups: [...state.groups, { id: NE.uid(), name, color }] });
+    };
+    const removeGroup = (gid) => setState({
+      groups: state.groups.filter(g => g.id !== gid),
+      notes: state.notes.map(n => n.group === gid ? { ...n, group: null } : n)
+    });
+    const ungrouped = state.notes.filter(n => !n.group).length;
+    return NE.el("div", {}, [
+      NE.el("h3", { text: "② 묶기 · 비슷한 문제끼리 모아요" }),
+      NE.el("div", { class: "row" }, [nameIn, NE.el("button", { text: "묶음 만들기", onclick: addGroup })]),
+      msg,
+      NE.el("div", { class: "group-list" }, state.groups.map(g => NE.el("span", { class: "group-pill" }, [
+        NE.el("span", { class: "sw", style: "background:" + g.color }), g.name,
+        NE.el("span", { class: "muted", text: "(" + state.notes.filter(n => n.group === g.id).length + ")" }),
+        NE.el("button", { type: "button", text: "×", title: "묶음 삭제", onclick: () => removeGroup(g.id) })
+      ]))),
+      NE.el("div", { class: "msg " + (ungrouped ? "bad" : "ok"), text: ungrouped ? "아직 묶이지 않은 쪽지가 " + ungrouped + "장 있어요. 쪽지의 선택 상자에서 묶음을 골라 주세요." : (state.notes.length ? "모든 쪽지가 묶였어요." : "쪽지가 없어요. 열거 단계에서 먼저 붙여 주세요.") })
+    ]);
+  }
+
+  function renderVoteTool() {
+    const left = MAX_VOTES - state.votesUsed;
+    return NE.el("div", {}, [
+      NE.el("h3", { text: "③ 고르기 · 점 세 개로 가장 중요한 문제를 골라요" }),
+      NE.el("div", { class: "row" }, [
+        NE.el("span", { text: "남은 점: " }), NE.el("span", { class: "dots", text: "●".repeat(left) + "○".repeat(state.votesUsed) }),
+        NE.el("button", { class: "ghost", text: "점 되돌리기 (다음 학생)", onclick: () => setState({ votesUsed: 0 }) }),
+        NE.el("button", { class: "ghost", text: "모든 점 지우기", onclick: () => { if (confirm("모든 점을 지울까요?")) setState({ votesUsed: 0, notes: state.notes.map(n => ({ ...n, votes: 0 })) }); } })
+      ]),
+      NE.el("div", { class: "msg muted", text: "한 사람이 점 3개를 다 쓰면 '점 되돌리기'를 눌러 다음 사람에게 넘겨요. 쪽지에 쌓인 점은 그대로 남아요." })
+    ]);
+  }
+
+  /* ---------- 쪽지 ---------- */
+  function noteTools(n) {
+    if (state.phase === "enumerate") return [];
+    if (state.phase === "group") {
+      const sel = NE.el("select", { onchange: (e) => setState({ notes: state.notes.map(x => x.id === n.id ? { ...x, group: e.target.value || null } : x) }) },
+        [NE.el("option", { value: "", text: "묶음 없음" }), ...state.groups.map(g => NE.el("option", { value: g.id, text: g.name }))]);
+      sel.value = n.group || "";
+      return [sel, n.group ? "" : NE.el("span", { class: "badge bad", text: "묶이지 않음" })].filter(Boolean);
+    }
+    const canVote = state.votesUsed < MAX_VOTES;
+    const vote = NE.el("button", { class: "secondary", text: "● 점 주기",
+      onclick: () => { if (!canVote) return; setState({ votesUsed: state.votesUsed + 1, notes: state.notes.map(x => x.id === n.id ? { ...x, votes: x.votes + 1 } : x) }); } });
+    if (!canVote) vote.disabled = true;
+    return [vote, NE.el("span", { class: "dots", text: "●".repeat(n.votes) }), NE.el("span", { class: "muted", text: n.votes + "점" })];
+  }
+  function renderNotes() {
+    const box = $("notes");
+    box.innerHTML = "";
+    if (!state.notes.length) { box.appendChild(NE.el("div", { class: "muted", text: "아직 쪽지가 없어요. 열거 단계에서 붙이거나 '예시 채우기'를 눌러 보세요." })); return; }
+    state.notes.forEach(n => {
+      const g = state.groups.find(x => x.id === n.group);
+      const card = NE.el("div", { class: "sticky", style: "border-left-color:" + (g ? g.color : "var(--line)") }, [
+        NE.el("div", { class: "who", text: charName(n.who) + (g ? " · " + g.name : "") }),
+        NE.el("div", { class: "text", text: n.text }),
+        NE.el("div", { class: "ev" }, n.evidence.map(NE.evidenceBadge)),
+        NE.el("div", { class: "tools" }, noteTools(n))
+      ]);
+      if (state.phase === "enumerate") card.appendChild(NE.el("button", { class: "x", text: "×", title: "쪽지 떼기", onclick: () => setState({ notes: state.notes.filter(x => x.id !== n.id) }) }));
+      box.appendChild(card);
+    });
+  }
+
+  /* ---------- 요약 ---------- */
+  function renderSummary() {
+    const box = $("summary");
+    box.innerHTML = "";
+    box.appendChild(NE.el("h3", { text: "요약" }));
+    if (!state.notes.length) { box.appendChild(NE.el("div", { class: "muted", text: "쪽지가 생기면 여기에 묶음별 개수와 점수가 보여요." })); return; }
+    const rows = [...state.groups.map(g => ({ name: g.name, color: g.color, list: state.notes.filter(n => n.group === g.id) })),
+      { name: "묶이지 않음", color: "#cfc4b2", list: state.notes.filter(n => !n.group) }].filter(r => r.list.length);
+    const maxCount = Math.max(...rows.map(r => r.list.length), 1);
+    rows.forEach(r => {
+      const votes = r.list.reduce((a, n) => a + n.votes, 0);
+      box.appendChild(NE.el("div", { class: "sum-row" }, [
+        NE.el("span", { class: "name" }, [NE.el("span", { class: "sw", style: "width:12px;height:12px;border-radius:50%;background:" + r.color }), r.name]),
+        NE.el("div", { class: "fill", style: "background:" + r.color + ";width:" + (r.list.length / maxCount * 50) + "%" }),
+        NE.el("span", { class: "muted", text: r.list.length + "장 · " + votes + "점" })
+      ]));
+    });
+    const top = state.notes.reduce((best, n) => (n.votes > (best ? best.votes : 0) ? n : best), null);
+    box.appendChild(top
+      ? NE.el("div", { class: "top" }, [NE.el("b", { text: "가장 많은 점을 받은 문제 (" + top.votes + "점): " }), top.text + " ", ...top.evidence.map(NE.evidenceBadge)])
+      : NE.el("div", { class: "muted", text: "아직 점을 준 쪽지가 없어요." }));
+  }
+
+  /* ---------- 예시 ---------- */
+  function seed() {
+    if (state.notes.length && !confirm("지금 보드를 지우고 예시로 바꿀까요?")) return;
+    const groups = [
+      { id: NE.uid(), name: "집이 약해요", color: COLORS[0] },
+      { id: NE.uid(), name: "늑대가 끈질겨요", color: COLORS[3] },
+      { id: NE.uid(), name: "도망이 힘들어요", color: COLORS[4] }
+    ];
+    const mk = (who, text, evidence, gi) => ({ id: NE.uid(), who, text, evidence, group: gi === null ? null : groups[gi].id, votes: 0 });
+    const notes = [
+      mk("first", "짚집은 바람 한 번에 날아가서 첫째가 살 곳이 없어요.", [8, 20], 0),
+      mk("second", "나뭇가지집은 틈이 많아서 두 번 불면 무너져요.", [11, 25], 0),
+      mk("third", "벽돌집은 튼튼하지만 짓는 데 여러 날이 걸려요.", [14, 15], null),
+      mk("first", "돼지는 늑대보다 느려서 도망치면 겨우 살아요.", [21, 26], 2),
+      mk("third", "늑대가 포기하지 않고 계속 찾아와서 밖에 나갈 수 없어요.", [30, 31], 1),
+      mk("third", "굴뚝처럼 열린 곳으로 늑대가 들어올 수 있어요.", [40, 42], 1)
+    ];
+    setState({ ...EMPTY, notes, groups });
+  }
+
+  /* ---------- 전체 렌더 ---------- */
+  function render() {
+    document.querySelectorAll("#phases button[data-phase]").forEach(b => b.classList.toggle("active", b.dataset.phase === state.phase));
+    const tool = $("tool");
+    tool.innerHTML = "";
+    tool.appendChild(state.phase === "enumerate" ? renderEnumerateTool() : state.phase === "group" ? renderGroupTool() : renderVoteTool());
+    renderNotes();
+    renderSummary();
+  }
+  document.querySelectorAll("#phases button[data-phase]").forEach(b => b.addEventListener("click", () => setState({ phase: b.dataset.phase })));
+  $("seed").addEventListener("click", seed);
+  $("clear-all").addEventListener("click", () => { if (confirm("보드의 쪽지와 묶음을 모두 지울까요?")) setState({ ...EMPTY }); });
+  if (!PHASES[state.phase]) state = { ...state, phase: "enumerate" };
+  render();
+})();
+</script>
+</body>
+</html>

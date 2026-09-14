@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>내가 만드는 시뮬레이션 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+.step { margin-top: 16px; }
+.step h3 .num { display: inline-block; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; text-align: center; line-height: 26px; font-size: .85rem; margin-right: 8px; }
+table td input[type="number"] { width: 80px; }
+table td input[type="text"] { min-width: 90px; }
+.picker .results { border: 1px solid var(--line); border-radius: 8px; background: #fff; max-height: 150px; overflow: auto; margin-top: 4px; }
+.picker .results:empty { display: none; }
+.picker .hit { padding: 6px 10px; font-size: .86rem; cursor: pointer; border-bottom: 1px solid var(--line); }
+.picker .hit:hover { background: var(--accent-soft); }
+.picker .hit .n { color: var(--muted); font-size: .8rem; margin-right: 6px; }
+.picker input { font-size: .88rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.chip { display: inline-flex; align-items: center; }
+.chip button { padding: 0 6px; border: 0; background: transparent; color: var(--muted); }
+.chips:empty::after { content: "이 변수는 책의 어느 문장에서 왔나요?"; font-size: .8rem; color: var(--bad); }
+.x { border: 0; background: transparent; color: var(--muted); padding: 0 6px; font-size: 1rem; }
+.rule { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px; background: #f6f2ea; border-radius: 10px; }
+.rule select, .rule input { width: auto; }
+.rule .op { width: 60px; text-align: center; font-weight: 700; }
+.rule .eq { font-weight: 700; font-size: 1.1rem; }
+.thr { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.thr input { width: auto; }
+.thr input.phrase { min-width: 140px; }
+.msg { font-size: .88rem; margin-top: 8px; }
+.msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
+.msg ul { margin: 4px 0 0 18px; padding: 0; }
+.range-label { display: flex; justify-content: space-between; font-weight: 600; font-size: .9rem; }
+.range-label .val { color: var(--accent); }
+.outcome { margin-top: 12px; padding: 14px; border-radius: 10px; background: #f6f2ea; text-align: center; }
+.outcome .big { font-size: 1.5rem; font-weight: 700; }
+.outcome.a { background: #e3f3e8; color: var(--ok); } .outcome.b { background: #f9e0dd; color: var(--bad); }
+.trace { font-family: ui-monospace, Consolas, monospace; font-size: .9rem; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body data-stage="2단계 문제 인식" data-who="학생" data-title="내가 만드는 시뮬레이션">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 확산(열거) → 수렴(정의), 연역(제약 도출)</div>
+    <p>선생님이 만든 시뮬레이션을 써 봤다면, 이번엔 여러분이 직접 만들어요. 이야기에서 숫자로 바꿀 수 있는 것(변수)을 2~4개 고르고, 그 변수로 계산 규칙을 만든 뒤, 결과가 얼마 이상이면 어떤 일이 일어나는지 정해요. 변수마다 "책의 어느 문장에서 왔는지"를 붙여야 해요. 그 문장을 찾는 것이 바로 이야기를 이해하는 일이에요.</p>
+  </div>
+
+  <div class="row"><button class="secondary" id="example">예시 불러오기</button><button class="ghost" id="reset">처음부터</button><span class="msg" id="topmsg"></span></div>
+
+  <div class="card step">
+    <h3><span class="num">1</span>변수 정하기 (2~4개)</h3>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>이름</th><th>최소</th><th>최대</th><th>단위</th><th style="width:38%">책의 어디에서 왔나요? (근거 문장)</th><th style="width:36px"></th></tr></thead>
+        <tbody id="vars"></tbody>
+      </table>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="secondary" id="add-var">변수 추가</button></div>
+    <div class="msg" id="var-msg"></div>
+  </div>
+
+  <div class="card step">
+    <h3><span class="num">2</span>규칙 만들기</h3>
+    <p class="muted">왼쪽부터 차례대로 계산해요. (예: 5 − 2 × 3 은 (5 − 2) × 3 = 9 예요.)</p>
+    <div class="rule" id="rule"></div>
+    <div class="row" style="margin-top:8px"><button class="secondary" id="add-term">항 추가</button><button class="ghost" id="del-term">마지막 항 삭제</button></div>
+    <div class="thr">
+      <span>결과가</span><input type="number" id="thr-n" step="any"><span>이상이면</span>
+      <input type="text" class="phrase" id="thr-a" placeholder="예: 집이 버텨요"><span>아니면</span>
+      <input type="text" class="phrase" id="thr-b" placeholder="예: 집이 무너져요">
+    </div>
+    <div class="msg" id="rule-msg"></div>
+  </div>
+
+  <div class="card step">
+    <h3><span class="num">3</span>실행</h3>
+    <div class="row"><button id="run">실행</button><span class="muted">변수와 규칙이 모두 채워져야 실행돼요.</span></div>
+    <div id="run-area"></div>
+  </div>
+
+  <div class="card step">
+    <h3><span class="num">4</span>되돌아보기 <span class="badge" id="ref-badge"></span></h3>
+    <div class="grid two">
+      <div class="field"><label>이 시뮬레이션이 책과 맞는 점</label><textarea id="ref-same" placeholder="예: 벽돌집은 다섯 번 불어도 안 무너져요 (문장 29). 내 규칙도 강도 10이면 6번까지 버텨요."></textarea></div>
+      <div class="field"><label>이 시뮬레이션이 책과 다른 점</label><textarea id="ref-diff" placeholder="예: 책에는 '강도'라는 숫자가 없어요. 짚이 1, 벽돌이 10이라는 건 내가 정한 거예요."></textarea></div>
+    </div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b> 교사용 시뮬레이션을 충분히 써 본 뒤에 씁니다. 학생에게 "변수는 이야기에서 숫자로 바꿀 수 있는 것"이라고만 말하고, 무엇을 변수로 삼을지는 정해 주지 않습니다. 시뮬레이션을 만드는 것 자체가 이해의 증거입니다 — 변수를 고르려면 이야기에서 무엇이 달라질 수 있고 무엇이 정해져 있는지 알아야 하기 때문입니다. <b>관찰 포인트:</b> 근거 문장을 붙이지 못하는 변수(예: '돼지의 용기')를 학생이 어떻게 처리하는지, 규칙이 왼쪽부터 계산된다는 것을 이해하고 항의 순서를 바꾸는지, 되돌아보기에서 "다른 점"을 자기가 정한 값이라고 솔직하게 쓰는지. <b>명세:</b> 기능 — 변수 2~4개 정의(이름·최소·최대·단위·근거 문장), eval 없이 왼쪽부터 계산하는 규칙 만들기(항은 변수 또는 숫자, 연산은 + − × ÷), 기준값 규칙(결과 ≥ N이면 문구A 아니면 문구B), 실행 시 변수마다 슬라이더와 실시간 결과, 되돌아보기 두 칸 필수, 예시 불러오기, localStorage 저장. 입력 — 변수 이름(빈 값·중복 거부), 최소<최대, 근거 1개 이상, 항 1개 이상, 기준값 숫자, 문구 두 개. 출력 — 계산 과정(예: 7 − 3 = 4)과 결과 문구. 성공 조건 — 근거 없는 변수가 있으면 실행되지 않고 이유가 보인다. 0으로 나누면 오류 문구가 보인다. 예시를 불러오면 강도 10·입김 6에서 "집이 버텨요", 강도 1·입김 1에서 "집이 무너져요"가 나온다.</div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const KEY = "ne.simbuilder";
+  const MIN_VARS = 2, MAX_VARS = 4;
+  const OPS = ["+", "-", "×", "÷"];
+  const EMPTY = { vars: [], rule: { operands: [], ops: [] }, threshold: { n: 1, a: "", b: "" }, values: {}, reflection: { same: "", diff: "" } };
+  const newVar = (p) => ({ id: NE.uid(), name: "", min: 0, max: 10, unit: "", evidence: [], ...(p || {}) });
+
+  let state = { ...EMPTY, ...NE.load(KEY, {}) };
+  function setState(patch, rerender) {
+    state = { ...state, ...patch };
+    if (!NE.save(KEY, state)) $("topmsg").textContent = "저장에 실패했어요. 브라우저 저장 공간을 확인해 주세요.";
+    if (rerender) render(); else updateMessages();
+  }
+  const varById = (id) => state.vars.find(v => v.id === id);
+
+  /* ---------- 근거 문장 검색 선택기 ---------- */
+  function makePicker(selected, onChange) {
+    const chips = NE.el("div", { class: "chips" }, selected.map(id => NE.el("span", { class: "chip" }, [
+      NE.evidenceBadge(id), NE.el("button", { type: "button", text: "×", title: "빼기", onclick: () => onChange(selected.filter(x => x !== id)) })
+    ])));
+    const results = NE.el("div", { class: "results" });
+    const input = NE.el("input", { type: "text", placeholder: "낱말로 원문 찾기 (예: 짚, 입김, 달리기)" });
+    input.addEventListener("input", () => {
+      results.innerHTML = "";
+      STORY.search(input.value).slice(0, 6).forEach(s => results.appendChild(
+        NE.el("div", { class: "hit", onclick: () => onChange(selected.includes(s.id) ? selected : [...selected, s.id]) }, [NE.el("span", { class: "n", text: "문장 " + s.id }), s.text])
+      ));
+      if (input.value.trim() && !results.childNodes.length) results.appendChild(NE.el("div", { class: "hit muted", text: "맞는 문장이 없어요. 다른 낱말로 찾아보세요." }));
+    });
+    return NE.el("div", { class: "picker" }, [chips, input, results]);
+  }
+
+  /* ---------- 검증 ---------- */
+  function validateVars(vars) {
+    const count = vars.length < MIN_VARS ? ["변수가 " + MIN_VARS + "개 이상 필요해요. (지금 " + vars.length + "개)"] : vars.length > MAX_VARS ? ["변수는 " + MAX_VARS + "개까지예요."] : [];
+    const names = vars.map(v => v.name.trim());
+    const each = vars.flatMap((v, i) => {
+      const label = (i + 1) + "번 변수";
+      return [
+        v.name.trim() ? null : label + ": 이름이 비어 있어요.",
+        v.name.trim() && names.indexOf(v.name.trim()) !== i ? label + ": 같은 이름의 변수가 있어요." : null,
+        Number.isFinite(v.min) && Number.isFinite(v.max) && v.min < v.max ? null : label + ": 최소가 최대보다 작아야 해요.",
+        v.evidence.length ? null : label + ": 근거 문장이 없어요."
+      ];
+    });
+    return [...count, ...each].filter(Boolean);
+  }
+  function validateRule(rule, thr, vars) {
+    const ops = rule.operands;
+    const errs = [
+      ops.length ? null : "항이 하나도 없어요. '항 추가'를 눌러 주세요.",
+      ...ops.map((o, i) => o.type === "var"
+        ? (vars.some(v => v.id === o.ref) ? null : (i + 1) + "번 항: 변수를 골라 주세요.")
+        : (Number.isFinite(o.value) ? null : (i + 1) + "번 항: 숫자를 적어 주세요.")),
+      Number.isFinite(thr.n) ? null : "기준값을 숫자로 적어 주세요.",
+      thr.a.trim() ? null : "'이상이면' 문구가 비어 있어요.",
+      thr.b.trim() ? null : "'아니면' 문구가 비어 있어요."
+    ];
+    return errs.filter(Boolean);
+  }
+  function showList(id, errs, okText) {
+    const m = $(id);
+    m.innerHTML = "";
+    if (!errs.length) { m.className = "msg ok"; m.textContent = okText; return; }
+    m.className = "msg bad";
+    m.appendChild(NE.el("ul", {}, errs.map(e => NE.el("li", { text: e }))));
+  }
+  function updateMessages() {
+    showList("var-msg", validateVars(state.vars), "변수 " + state.vars.length + "개, 모두 근거가 있어요.");
+    showList("rule-msg", validateRule(state.rule, state.threshold, state.vars), "규칙이 완성됐어요.");
+    const r = state.reflection;
+    const done = r.same.trim() && r.diff.trim();
+    const b = $("ref-badge");
+    b.className = "badge " + (done ? "ok" : "warn");
+    b.textContent = done ? "완료" : "두 칸을 모두 써야 해요";
+    $("add-var").disabled = state.vars.length >= MAX_VARS;
+  }
+
+  /* ---------- 계산 (eval 없음) ---------- */
+  function applyOp(a, op, b) {
+    if (op === "+") return a + b;
+    if (op === "-") return a - b;
+    if (op === "×") return a * b;
+    return b === 0 ? NaN : a / b;
+  }
+  function evaluate(rule, values) {
+    const resolve = (o) => o.type === "num" ? o.value : values[o.ref];
+    const label = (o) => o.type === "num" ? String(o.value) : (varById(o.ref) || { name: "?" }).name + "(" + values[o.ref] + ")";
+    const first = rule.operands[0];
+    const start = { value: resolve(first), trace: label(first), error: null };
+    return rule.ops.reduce((acc, op, i) => {
+      if (acc.error) return acc;
+      const o = rule.operands[i + 1];
+      const b = resolve(o);
+      const v = applyOp(acc.value, op, b);
+      const error = Number.isNaN(v) ? "0으로 나눌 수 없어요. 변수의 최소값이나 규칙을 바꿔 주세요." : null;
+      return { value: v, trace: acc.trace + " " + op + " " + label(o), error };
+    }, start);
+  }
+
+  /* ---------- 렌더: 변수 ---------- */
+  const updateVar = (id, patch, rerender) => setState({ vars: state.vars.map(v => v.id === id ? { ...v, ...patch } : v) }, rerender);
+  function renderVars() {
+    const tb = $("vars");
+    tb.innerHTML = "";
+    if (!state.vars.length) tb.appendChild(NE.el("tr", {}, [NE.el("td", { colspan: "6", class: "muted", text: "아직 변수가 없어요. '변수 추가'를 누르거나 '예시 불러오기'를 눌러 보세요." })]));
+    state.vars.forEach(v => {
+      const numIn = (field) => NE.el("input", { type: "number", value: String(v[field]), step: "any", oninput: (e) => updateVar(v.id, { [field]: Number(e.target.value) }, false) });
+      tb.appendChild(NE.el("tr", {}, [
+        NE.el("td", {}, [NE.el("input", { type: "text", value: v.name, placeholder: "예: 재료 강도", oninput: (e) => updateVar(v.id, { name: e.target.value }, false), onchange: () => render() })]),
+        NE.el("td", {}, [numIn("min")]), NE.el("td", {}, [numIn("max")]),
+        NE.el("td", {}, [NE.el("input", { type: "text", value: v.unit, placeholder: "예: 점", oninput: (e) => updateVar(v.id, { unit: e.target.value }, false) })]),
+        NE.el("td", {}, [makePicker(v.evidence, (ev) => updateVar(v.id, { evidence: ev }, true))]),
+        NE.el("td", {}, [NE.el("button", { class: "x", text: "×", title: "변수 삭제", onclick: () => removeVar(v.id) })])
+      ]));
+    });
+  }
+  function removeVar(id) {
+    const operands = state.rule.operands.map(o => o.type === "var" && o.ref === id ? { type: "var", ref: "" } : o);
+    setState({ vars: state.vars.filter(v => v.id !== id), rule: { ...state.rule, operands } }, true);
+  }
+
+  /* ---------- 렌더: 규칙 ---------- */
+  const setOperand = (i, o, rerender) => setState({ rule: { ...state.rule, operands: state.rule.operands.map((x, j) => j === i ? o : x) } }, rerender);
+  function operandNode(o, i) {
+    const sel = NE.el("select", { onchange: (e) => setOperand(i, e.target.value === "__num" ? { type: "num", value: 0 } : { type: "var", ref: e.target.value }, true) },
+      [NE.el("option", { value: "", text: "— 고르기 —" }), ...state.vars.map(v => NE.el("option", { value: v.id, text: v.name.trim() || "(이름 없음)" })), NE.el("option", { value: "__num", text: "숫자" })]);
+    sel.value = o.type === "num" ? "__num" : (varById(o.ref) ? o.ref : "");
+    const num = o.type === "num" ? NE.el("input", { type: "number", step: "any", value: String(o.value), style: "width:80px", oninput: (e) => setOperand(i, { type: "num", value: Number(e.target.value) }, false) }) : null;
+    return NE.el("span", { class: "row" }, [sel, num].filter(Boolean));
+  }
+  function opNode(op, i) {
+    const sel = NE.el("select", { class: "op", onchange: (e) => setState({ rule: { ...state.rule, ops: state.rule.ops.map((x, j) => j === i ? e.target.value : x) } }, false) }, OPS.map(x => NE.el("option", { value: x, text: x })));
+    sel.value = op;
+    return sel;
+  }
+  function renderRule() {
+    const box = $("rule");
+    box.innerHTML = "";
+    box.appendChild(NE.el("span", { class: "eq", text: "결과 =" }));
+    state.rule.operands.forEach((o, i) => {
+      if (i > 0) box.appendChild(opNode(state.rule.ops[i - 1], i - 1));
+      box.appendChild(operandNode(o, i));
+    });
+    if (!state.rule.operands.length) box.appendChild(NE.el("span", { class: "muted", text: "'항 추가'를 눌러 첫 항을 넣어 주세요." }));
+    $("thr-n").value = Number.isFinite(state.threshold.n) ? String(state.threshold.n) : "";
+    $("thr-a").value = state.threshold.a;
+    $("thr-b").value = state.threshold.b;
+  }
+  function addTerm() {
+    const operands = [...state.rule.operands, { type: "var", ref: "" }];
+    const ops = state.rule.operands.length ? [...state.rule.ops, OPS[0]] : state.rule.ops;
+    setState({ rule: { operands, ops } }, true);
+  }
+  function delTerm() {
+    if (!state.rule.operands.length) return;
+    setState({ rule: { operands: state.rule.operands.slice(0, -1), ops: state.rule.ops.slice(0, Math.max(0, state.rule.operands.length - 2)) } }, true);
+  }
+
+  /* ---------- 렌더: 실행 ---------- */
+  function currentValues() {
+    return state.vars.reduce((acc, v) => {
+      const stored = state.values[v.id];
+      const val = Number.isFinite(stored) ? Math.min(v.max, Math.max(v.min, stored)) : v.min;
+      return { ...acc, [v.id]: val };
+    }, {});
+  }
+  function renderOutcome(box, values) {
+    const r = evaluate(state.rule, values);
+    box.innerHTML = "";
+    if (r.error) { box.className = "outcome"; box.appendChild(NE.el("div", { class: "big", text: r.error, style: "font-size:1rem;color:var(--bad)" })); return; }
+    const hit = r.value >= state.threshold.n;
+    const shown = Number.isInteger(r.value) ? String(r.value) : r.value.toFixed(2);
+    box.className = "outcome " + (hit ? "a" : "b");
+    box.appendChild(NE.el("div", { class: "big", text: hit ? state.threshold.a : state.threshold.b }));
+    box.appendChild(NE.el("div", { class: "trace", text: r.trace + " = " + shown + (hit ? " ≥ " : " < ") + state.threshold.n }));
+  }
+  function run() {
+    const errs = [...validateVars(state.vars), ...validateRule(state.rule, state.threshold, state.vars)];
+    const area = $("run-area");
+    area.innerHTML = "";
+    if (errs.length) { updateMessages(); area.appendChild(NE.el("div", { class: "msg bad", text: "아직 실행할 수 없어요. 1번과 2번의 빨간 안내를 고쳐 주세요." })); return; }
+    const values = currentValues();
+    const out = NE.el("div", { class: "outcome" });
+    const sliders = state.vars.map(v => {
+      const step = Number.isInteger(v.min) && Number.isInteger(v.max) ? 1 : (v.max - v.min) / 20;
+      const valSpan = NE.el("span", { class: "val", text: values[v.id] + " " + v.unit });
+      const range = NE.el("input", { type: "range", min: String(v.min), max: String(v.max), step: String(step), value: String(values[v.id]) });
+      range.addEventListener("input", () => {
+        const next = { ...state.values, [v.id]: Number(range.value) };
+        valSpan.textContent = range.value + " " + v.unit;
+        setState({ values: next }, false);
+        renderOutcome(out, currentValues());
+      });
+      return NE.el("div", { class: "field" }, [NE.el("div", { class: "range-label" }, [NE.el("span", {}, [v.name + " ", ...v.evidence.map(NE.evidenceBadge)]), valSpan]), range]);
+    });
+    area.appendChild(NE.el("div", { class: "grid two", style: "margin-top:12px" }, sliders));
+    area.appendChild(out);
+    renderOutcome(out, values);
+  }
+
+  /* ---------- 예시 ---------- */
+  function loadExample() {
+    if (state.vars.length && !confirm("지금 만든 것을 지우고 예시를 불러올까요?")) return;
+    const strength = newVar({ name: "재료 강도", min: 1, max: 10, unit: "점", evidence: [8, 11, 14] });
+    const wind = newVar({ name: "늑대 입김 세기", min: 1, max: 6, unit: "번", evidence: [29] });
+    setState({
+      ...EMPTY, vars: [strength, wind],
+      rule: { operands: [{ type: "var", ref: strength.id }, { type: "var", ref: wind.id }], ops: ["-"] },
+      threshold: { n: 1, a: "집이 버텨요", b: "집이 무너져요" },
+      values: { [strength.id]: 7, [wind.id]: 3 }
+    }, true);
+    $("topmsg").className = "msg ok";
+    $("topmsg").textContent = "예시를 불러왔어요. 3번 '실행'을 눌러 보세요.";
+    run();
+  }
+
+  /* ---------- 전체 ---------- */
+  function render() {
+    renderVars(); renderRule();
+    $("ref-same").value = state.reflection.same;
+    $("ref-diff").value = state.reflection.diff;
+    updateMessages();
+  }
+  $("add-var").addEventListener("click", () => { if (state.vars.length < MAX_VARS) setState({ vars: [...state.vars, newVar()] }, true); });
+  $("add-term").addEventListener("click", addTerm);
+  $("del-term").addEventListener("click", delTerm);
+  $("thr-n").addEventListener("input", (e) => setState({ threshold: { ...state.threshold, n: e.target.value === "" ? NaN : Number(e.target.value) } }, false));
+  $("thr-a").addEventListener("input", (e) => setState({ threshold: { ...state.threshold, a: e.target.value } }, false));
+  $("thr-b").addEventListener("input", (e) => setState({ threshold: { ...state.threshold, b: e.target.value } }, false));
+  $("run").addEventListener("click", run);
+  $("ref-same").addEventListener("input", (e) => setState({ reflection: { ...state.reflection, same: e.target.value } }, false));
+  $("ref-diff").addEventListener("input", (e) => setState({ reflection: { ...state.reflection, diff: e.target.value } }, false));
+  $("example").addEventListener("click", loadExample);
+  $("reset").addEventListener("click", () => { if (confirm("모두 지우고 처음부터 할까요?")) { setState({ ...EMPTY }, true); $("run-area").innerHTML = ""; } });
+  render();
+})();
+</script>
+</body>
+</html>
