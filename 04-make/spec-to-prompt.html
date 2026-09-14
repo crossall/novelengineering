@@ -57,8 +57,9 @@
     <h2>2단계 · 프롬프트</h2>
     <p class="muted">명세가 그대로 글이 됐어요. 고치고 싶으면 1단계로 돌아가 명세를 고칩니다.</p>
     <textarea id="prompt-out" readonly></textarea>
-    <div class="row" style="margin-top:8px"><button class="secondary" id="btn-copy">프롬프트 복사</button><span class="msg ok" id="copy-msg" style="margin:0"></span></div>
-    <div class="instruction">이 프롬프트를 AI(클로드, 제미나이 등)에 붙여 넣고, 돌아온 HTML 코드를 <b>전부</b> 복사해 오세요. 선생님과 함께 해도 좋아요.</div>
+    <div class="row" style="margin-top:8px"><button id="btn-ai-send">AI에게 바로 보내기</button><button class="secondary" id="btn-copy">프롬프트 복사</button><span class="msg ok" id="copy-msg" style="margin:0"></span></div>
+    <div class="instruction">"AI에게 바로 보내기"를 누르면 이 프롬프트가 Claude에 가고, 돌아온 코드가 3단계에 자동으로 들어가요(오른쪽 위 'AI 설정'에 키가 있어야 해요).
+    키가 없으면 프롬프트를 복사해 AI(클로드, 제미나이 등)에 붙여 넣고, 돌아온 HTML 코드를 <b>전부</b> 복사해 오세요.</div>
     <div class="nav"><button class="ghost" id="back-2">← 명세</button><button id="next-2">다음: 실행</button></div>
   </div>
 
@@ -96,20 +97,25 @@
   <div class="teacher-note"><b>교사 노트.</b>
     수업 사용법: 학생 한 명(또는 모둠)이 명세를 채우면 2단계 프롬프트를 교사 계정의 AI에 붙여 넣고, 돌아온 코드를 학생이 3단계에 붙여 실행합니다. 실행 화면은 격리된 틀(sandbox) 안에서만 돌아가므로 이 페이지의 저장 데이터에 닿지 못합니다. 4단계에서 실패가 나오면 학생이 "명세로 돌아가기"와 "프롬프트 고치기" 중 하나를 고르게 하고, 바퀴 수를 함께 봅니다.
     관찰 포인트: 1단계에서 성공 조건에 숫자를 넣는가. 4단계에서 "예상"을 먼저 적는가, 결과를 보고 예상을 바꾸지는 않는가. 실패의 원인을 명세 쪽으로 돌리는지 AI 쪽으로 돌리는지 — 이것이 메타인지의 갈림길입니다.
-    이 앱의 명세 — 기능: ① 짧은 명세 입력(이름·인물·기능 3·성공 조건 3) ② 프롬프트 자동 생성·복사 ③ 붙여 넣은 HTML을 격리된 틀에서 실행 ④ 예시 코드 내장 ⑤ 검증 카드 3장과 되돌아가기 바퀴 수 기록. 입력: 명세 칸, HTML 텍스트, 카드 입력·예상·실제·결과. 출력: 프롬프트 텍스트, 실행 화면, "3개 중 N개 통과", "지금까지 N바퀴 돌았어요". 성공 조건: 성공 조건 3개가 비면 2단계로 못 넘어간다 / HTML 표시가 없는 글을 실행하면 안내가 뜬다 / 실패 카드가 있으면 되돌아가기 버튼 2개가 나타나고 누르면 바퀴 수가 1 늘어난다 / 새로고침해도 단계와 입력이 남아 있다.
+    <br><b>AI 연동.</b> "AI에게 바로 보내기"는 2단계 프롬프트를 그대로 Claude에 보내고 답에서 HTML만 뽑아 3단계에 넣습니다. 되돌아간 뒤 다시 보내면 이전 코드와 실패한 검증 카드(입력·예상·실제)를 함께 붙여 "이것을 고쳐 달라"고 요청합니다. 학생이 쓴 명세와 검증 카드가 곧 다음 프롬프트가 된다는 점을 화면에서 보여 주세요.
+    <br>이 앱의 명세 — 기능: ① 짧은 명세 입력(이름·인물·기능 3·성공 조건 3) ② 프롬프트 자동 생성·복사·AI 직접 전송 ③ 붙여 넣은(또는 AI가 돌려준) HTML을 격리된 틀에서 실행 ④ 예시 코드 내장 ⑤ 검증 카드 3장과 되돌아가기 바퀴 수 기록. 입력: 명세 칸, HTML 텍스트, 카드 입력·예상·실제·결과. 출력: 프롬프트 텍스트, 실행 화면, "3개 중 N개 통과", "지금까지 N바퀴 돌았어요". 성공 조건: 성공 조건 3개가 비면 2단계로 못 넘어간다 / HTML 표시가 없는 글을 실행하면 안내가 뜬다 / 실패 카드가 있으면 되돌아가기 버튼 2개가 나타나고 누르면 바퀴 수가 1 늘어난다 / 새로고침해도 단계와 입력이 남아 있다.
   </div>
 </div>
 <script src="../shared/story.js"></script>
 <script src="../shared/ui.js"></script>
+<script src="../shared/ai.local.js"></script>
+<script src="../shared/ai.js"></script>
 <script>
 (function () {
   const KEY = "ne4.spec-to-prompt";
+  const AI_MAX_TOKENS = 16000;
+  const AI_SYSTEM = "당신은 HTML 파일 하나를 만드는 개발자입니다. 설명 없이 완성된 HTML 코드만 ```html 코드 블록 하나로 답하세요. 외부 라이브러리와 외부 요청은 쓰지 않습니다.";
   const STEPS = ["명세", "프롬프트", "실행", "검증"];
   const CARD_LABELS = ["보통 경우", "경계 경우", "이상한 입력"];
   const RESULTS = ["아직", "통과", "실패"];
   const HTML_MARK = /<html|<body|<script/i;
   const EMPTY_CARD = { input: "", expect: "", actual: "", result: "아직" };
-  const EMPTY = { step: 1, spec: { name: "", who: "third", features: ["", "", ""], success: ["", "", ""] }, html: "", ran: false, cards: [EMPTY_CARD, EMPTY_CARD, EMPTY_CARD], loops: 0, history: [] };
+  const EMPTY = { step: 1, spec: { name: "", who: "third", features: ["", "", ""], success: ["", "", ""] }, html: "", ran: false, cards: [EMPTY_CARD, EMPTY_CARD, EMPTY_CARD], loops: 0, history: [], lastFails: [] };
   const EXAMPLE_SPEC = { name: "늑대 경보 종", who: "third",
     features: ["늑대 거리를 슬라이더로 정한다", "거리가 2m 미만이면 종이 빨개지고 '땡땡!'이 뜬다", "거리가 2m 이상이면 조용하다"],
     success: ["거리를 1m로 하면 '땡땡!'이 보인다", "거리를 정확히 2m로 하면 조용하다", "거리를 9m로 하면 조용하다"] };
@@ -160,7 +166,8 @@
       html: str(s.html), ran: s.ran === true,
       cards: [0, 1, 2].map(i => { const c = cards[i] && typeof cards[i] === "object" ? cards[i] : {}; return { input: str(c.input), expect: str(c.expect), actual: str(c.actual), result: RESULTS.includes(c.result) ? c.result : "아직" }; }),
       loops: Number.isInteger(s.loops) && s.loops >= 0 ? s.loops : 0,
-      history: Array.isArray(s.history) ? s.history.filter(h => h && typeof h.to === "string") : []
+      history: Array.isArray(s.history) ? s.history.filter(h => h && typeof h.to === "string") : [],
+      lastFails: Array.isArray(s.lastFails) ? s.lastFails.filter(f => f && typeof f === "object").map(f => ({ input: str(f.input), expect: str(f.expect), actual: str(f.actual) })) : []
     };
   }
 
@@ -232,6 +239,31 @@
       "[성공 조건] 아래 세 가지가 모두 통과해야 합니다.", nonEmpty(s.success).map((c, i) => (i + 1) + ". " + c.trim()).join("\n"), "",
       "HTML 파일 하나로 만들어 주세요. 외부 라이브러리 없이. 코드 전체를 한 번에 보여 주세요."
     ].join("\n");
+  }
+  // 되돌아온 뒤에는 이전 코드와 실패한 카드를 함께 보내 고치게 한다.
+  function aiUserMessage() {
+    const base = composePrompt(state.spec);
+    if (!state.lastFails.length || !state.html.trim()) return base;
+    const fails = state.lastFails.map((f, i) => (i + 1) + ". 입력: " + f.input + " / 예상: " + f.expect + " / 실제: " + f.actual).join("\n");
+    return [base, "", "[이전 코드] 아래 코드를 만들었지만 검증에서 실패했습니다. 실패한 것을 고쳐서 완성된 HTML 전체를 다시 주세요.", "[검증에서 실패한 것]", fails, "", "```html", state.html, "```"].join("\n");
+  }
+  async function aiSend() {
+    const msg = document.getElementById("copy-msg"), btn = document.getElementById("btn-ai-send");
+    if (!NE.ai.hasKey()) { msg.textContent = "AI 키가 없어요. 오른쪽 위 'AI 설정'에서 키를 넣어 주세요."; NE.ai.openSettings(); return; }
+    btn.disabled = true;
+    msg.textContent = "AI가 코드를 쓰는 중… (30초쯤 걸려요)";
+    try {
+      const r = await NE.ai.ask({ system: AI_SYSTEM, user: aiUserMessage(), effort: "medium", maxTokens: AI_MAX_TOKENS });
+      const html = NE.ai.extractHtml(r.text);
+      if (!html) { msg.textContent = "AI 답에서 HTML 코드를 찾지 못했어요. 프롬프트를 복사해 직접 보내 보세요."; return; }
+      setState(Object.assign({}, state, { html, ran: false }));
+      msg.textContent = "";
+      goTo(3);
+      runHtml();
+      document.getElementById("run-msg").textContent = "AI가 만든 코드예요 (" + r.model + "). 4단계로 가서 검증해요.";
+    } catch (e) {
+      msg.textContent = e && e.message ? e.message : "AI 요청이 실패했어요.";
+    } finally { btn.disabled = false; }
   }
   function copyPrompt() {
     const text = document.getElementById("prompt-out").value;
@@ -308,10 +340,12 @@
     state.history.forEach((h, i) => log.appendChild(NE.el("li", { text: (i + 1) + "바퀴: " + (h.to === "spec" ? "명세로 돌아감" : "프롬프트를 고침") + (h.fails ? " (실패 " + h.fails + "개)" : "") })));
   }
   function loopBack(to) {
-    const fails = state.cards.filter(c => c.result === "실패").length;
+    const failed = state.cards.filter(c => c.result === "실패");
+    const fails = failed.length;
     setState(Object.assign({}, state, {
       loops: state.loops + 1,
       history: state.history.concat([{ to, fails }]),
+      lastFails: failed.map(c => ({ input: c.input, expect: c.expect, actual: c.actual })),
       cards: state.cards.map(c => Object.assign({}, c, { actual: "", result: "아직" }))
     }));
     goTo(to === "spec" ? 1 : 2);
@@ -335,6 +369,7 @@
     document.getElementById("back-2").addEventListener("click", () => goTo(1));
     document.getElementById("next-2").addEventListener("click", () => goTo(3));
     document.getElementById("btn-copy").addEventListener("click", copyPrompt);
+    document.getElementById("btn-ai-send").addEventListener("click", aiSend);
     document.getElementById("btn-run").addEventListener("click", runHtml);
     document.getElementById("btn-example-code").addEventListener("click", () => { document.getElementById("html-in").value = EXAMPLE_HTML; runHtml(); });
     document.getElementById("html-in").addEventListener("input", e => setState(Object.assign({}, state, { html: e.target.value, ran: false })));

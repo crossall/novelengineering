@@ -42,8 +42,9 @@
       <h3>내 이야기</h3>
       <div class="field"><label for="device">장치 이름</label><input type="text" id="device" maxlength="30" placeholder="예: 굴뚝 뚜껑"></div>
       <div class="field"><label for="story">새로 쓴 이야기</label><textarea id="story" maxlength="4000" placeholder="문장 끝에 마침표를 찍어 주세요. 검사기는 마침표로 문장을 나눠요."></textarea></div>
-      <div class="row"><button id="btnRun">검사하기</button><button class="secondary" id="btnSample">예시 이야기 불러오기</button><button class="ghost" id="btnClear">지우기</button></div>
+      <div class="row"><button id="btnRun">검사하기</button><button class="secondary" id="btnAI">AI로도 검사</button><button class="secondary" id="btnSample">예시 이야기 불러오기</button><button class="ghost" id="btnClear">지우기</button></div>
       <div class="hint" id="runHint"></div>
+      <p class="muted" style="font-size:.82rem;margin:6px 0 0">"AI로도 검사"는 규칙 검사 위에 Claude의 지적을 더해요. AI 지적에는 <span class="badge">AI</span> 표시가 붙고, 마찬가지로 반박할 수 있어요.</p>
     </div>
     <div class="card">
       <h3>지적 목록</h3>
@@ -60,16 +61,20 @@
   <div class="teacher-note"><b>교사 노트.</b>
     수업 사용법: 사건 그래프에서 만든 새 줄거리(또는 학생이 쓴 새 이야기)를 붙여 넣고 검사하게 합니다. 지적마다 "수정할게요"나 "반박할게요" 중 하나를 고르게 하고, 반박은 근거 문장을 붙여야만 인정됩니다. 다 처리한 뒤 다시 검사하면 처리한 항목은 표시가 유지됩니다.
     관찰 포인트: <b>반박 버튼을 누르는 순간</b>이 이 앱의 핵심입니다. 검사기는 일부러 단순한 규칙(낱말 찾기)으로 만들어서 틀린 지적도 냅니다. 학생이 틀린 지적을 근거로 반박하는지, 맞는 지적을 무작정 반박하는지, "내 이야기 안의 설정"을 근거로 댈 때 실제로 그 설정을 앞에서 써 두었는지를 보세요. 검사기가 못 잡는 모순을 학생이 스스로 찾으면 크게 칭찬합니다.
+    <br><b>AI 검사.</b> "AI로도 검사"는 원문 43문장과 제약 목록, 학생의 이야기를 Claude에 주고 "모순(x)과 인과의 빈틈(q)을 문장 번호와 원작 근거와 함께 JSON으로 최대 6개" 돌려받습니다. 규칙 검사와 AI 검사를 나란히 보이면 "규칙은 낱말을 보고, AI는 뜻을 보지만 둘 다 틀릴 수 있다"를 학생이 직접 겪습니다. 반박 절차는 같습니다.
     <br><b>명세.</b> 기능: 붙여 넣은 글을 마침표 기준으로 문장으로 나누고 규칙 6가지(시대 낱말 → 제약 c1, 재료 낱말 → c3, 벽돌집+날아/무너 → 문장 29 모순, 장치가 있는데 짚집·나뭇가지집이 그대로 무너짐, 늑대가 착해짐 → 질문, 결말 낱말 없음 → 질문)로 검사해 지적 목록을 만든다. 입력: 장치 이름(2자 이상), 이야기(30자 이상), 지적마다 수정 메모(5자 이상) 또는 반박문(15자 이상)+근거(원작 문장 검색 선택 또는 "내 이야기 안의 설정" 체크+이야기 속 문장 인용). 출력: 지적 카드(종류·내 문장·원작 근거 배지), 처리 상태 배지(수정/반박 인정), 처리 기록. 성공 조건: 규칙마다 근거 문장 id가 붙는다, 근거 없는 반박은 저장되지 않는다, 인용한 문장은 실제로 내 이야기 안에 있어야 한다, 다시 검사해도 처리한 항목의 상태가 남는다.
   </div>
 </div>
 <script src="../shared/story.js"></script>
 <script src="../shared/ui.js"></script>
+<script src="../shared/ai.local.js"></script>
+<script src="../shared/ai.js"></script>
 <script>
 (function () {
   const { el, evidenceBadge, load, save } = window.NE;
   const STORE = "ne.06.contradiction";
   const MIN_STORY = 30, MIN_DEVICE = 2, MIN_FIX = 5, MIN_REBUT = 15;
+  const AI_MAX_ITEMS = 6, AI_MAX_TOKENS = 2000;
   const ERA_WORDS = ["전기", "전화", "스마트폰", "자동차", "드론", "로봇", "인터넷", "카메라", "모터"];
   const MATERIAL_WORDS = ["철", "유리", "플라스틱", "시멘트"];
   const COLLAPSE = /(날아|무너)/;
@@ -123,6 +128,54 @@
     renderItems();
   }
 
+  // ---- AI 검사: 규칙 검사 결과 위에 Claude의 지적을 더한다 ----
+  function aiSystem() {
+    return [
+      "당신은 초등학생이 「아기돼지 삼형제」를 바꿔 쓴 이야기를 검사하는 검사기입니다. 학생은 원작에 새 '장치'를 넣어 이야기를 다시 썼습니다.",
+      "검사 기준:",
+      "- x(모순): 원작이 정한 제약(아래 [제약])이나 원작의 확정된 사실과 어긋나는 곳. 단, 장치 때문에 달라진 사건은 모순이 아닙니다.",
+      "- q(질문): 장치가 있는데도 사건이 원작대로 흘러가거나, 원인 없이 인물이 바뀌거나, 앞뒤가 이어지지 않는 곳.",
+      "규칙: 학생 이야기의 [내 문장] 번호로 위치를 가리키고, 원작 근거는 [원문]의 문장 번호만 씁니다. 최대 " + AI_MAX_ITEMS + "개. 초등학생이 읽을 짧은 존댓말. 확신이 없으면 x 대신 q로 냅니다.",
+      "출력은 JSON 하나만: {\"items\":[{\"index\":2,\"kind\":\"x\",\"title\":\"한 줄 지적\",\"reason\":\"왜 그런지 한두 문장\",\"evidence\":[29]}]} — index는 내 문장 번호(1부터), 이야기 전체에 대한 지적이면 0.",
+      "", "[제약]", window.NE.ai.constraintsText(), "", "[원문]", window.NE.ai.storyText()
+    ].join("\n");
+  }
+  function slug(s) { return String(s).replace(/[^가-힣a-z0-9]/gi, "").slice(0, 24); }
+  function normalizeAiItems(raw, sents) {
+    const list = raw && Array.isArray(raw.items) ? raw.items : [];
+    const max = window.STORY.sentences.length;
+    return list.slice(0, AI_MAX_ITEMS).map(it => {
+      const index = Number.isInteger(it.index) ? it.index - 1 : -1;
+      const quote = index >= 0 && index < sents.length ? sents[index] : "";
+      const evidence = (Array.isArray(it.evidence) ? it.evidence : []).map(Number).filter(n => n >= 1 && n <= max);
+      const title = String(it.title || "").trim().slice(0, 80);
+      if (!title) return null;
+      return { index: quote ? index : -1, quote, key: "ai:" + (index + 1) + ":" + slug(title), kind: it.kind === "x" ? "x" : "q", title, rule: String(it.reason || "").trim().slice(0, 300), evidence, src: "ai" };
+    }).filter(Boolean);
+  }
+  async function runAI() {
+    const device = document.getElementById("device").value, text = document.getElementById("story").value;
+    const hint = document.getElementById("runHint"), btn = document.getElementById("btnAI");
+    if (device.trim().length < MIN_DEVICE) { hint.className = "hint"; hint.textContent = "장치 이름을 " + MIN_DEVICE + "자 이상 적어 주세요."; return; }
+    if (text.trim().length < MIN_STORY) { hint.className = "hint"; hint.textContent = "이야기를 " + MIN_STORY + "자 이상 붙여 넣어 주세요."; return; }
+    if (!window.NE.ai.hasKey()) { hint.className = "hint"; hint.textContent = "AI 키가 없어요. 오른쪽 위 'AI 설정'에서 키를 넣어 주세요."; window.NE.ai.openSettings(); return; }
+    const sents = splitSentences(text);
+    const user = ["[장치] " + device.trim(), "", "[내 문장]", ...sents.map((s, i) => (i + 1) + ". " + s)].join("\n");
+    btn.disabled = true;
+    hint.className = "hint ok"; hint.textContent = "AI가 읽는 중… (10초쯤 걸려요)";
+    try {
+      const r = await window.NE.ai.ask({ system: aiSystem(), user, effort: "medium", maxTokens: AI_MAX_TOKENS });
+      const aiItems = normalizeAiItems(window.NE.ai.parseJson(r.text), sents);
+      const ruleItems = runChecks(text, device);
+      setState({ device, text, items: [...ruleItems, ...aiItems] });
+      openForm = null;
+      hint.textContent = "규칙 지적 " + ruleItems.length + "개 + AI 지적 " + aiItems.length + "개. 하나씩 살펴보세요.";
+      renderItems();
+    } catch (e) {
+      hint.className = "hint"; hint.textContent = e && e.message ? e.message : "AI 검사가 실패했어요.";
+    } finally { btn.disabled = false; }
+  }
+
   // ---- 지적 카드 ----
   function renderItems() {
     const box = document.getElementById("items");
@@ -135,7 +188,7 @@
   function itemCard(it) {
     const r = state.resolved[it.key];
     const card = el("div", { class: "item " + it.kind + (r ? " done" : "") }, [
-      el("div", {}, [el("span", { class: "badge " + (it.kind === "x" ? "bad" : "warn"), text: it.kind === "x" ? "모순일까요?" : "질문" }), " ", el("span", { class: "title", text: it.title })]),
+      el("div", {}, [el("span", { class: "badge " + (it.kind === "x" ? "bad" : "warn"), text: it.kind === "x" ? "모순일까요?" : "질문" }), " ", it.src === "ai" ? el("span", { class: "badge", text: "AI" }) : "", " ", el("span", { class: "title", text: it.title })].filter(Boolean)),
       it.quote ? el("div", { class: "mine" }, [el("span", { class: "n", text: "내 문장 " + (it.index + 1) }), it.quote]) : "",
       el("div", { class: "rule" }, [it.rule + " ", ...it.evidence.map(evidenceBadge)])
     ].filter(Boolean));
@@ -219,6 +272,7 @@
 
   // ---- 초기화 ----
   document.getElementById("btnRun").addEventListener("click", run);
+  document.getElementById("btnAI").addEventListener("click", runAI);
   document.getElementById("btnSample").addEventListener("click", () => {
     document.getElementById("device").value = SAMPLE.device;
     document.getElementById("story").value = SAMPLE.text;

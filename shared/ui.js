@@ -15,7 +15,7 @@
 
   function renderHeader() {
     const b = document.body;
-    const depth = (location.pathname.match(/\//g) || []).length;
+    if (b.dataset.noHeader !== undefined) return;   // 허브처럼 자체 머리말이 있는 페이지
     const home = b.dataset.home || "../index.html";
     const header = el("header", { class: "ne-header" }, [
       el("a", { class: "ne-home", href: home, text: "← 노벨 엔지니어링 × 바이브코딩" }),

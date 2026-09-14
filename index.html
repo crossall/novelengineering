@@ -28,7 +28,7 @@
   @media (max-width: 640px) { .apps { grid-template-columns: 1fr; } }
 </style>
 </head>
-<body>
+<body data-no-header>
 <div class="wrap">
   <div class="hero">
     <h1>노벨 엔지니어링 × 바이브코딩</h1>
@@ -41,6 +41,9 @@
       아래 모든 앱은 서버 없이 브라우저에서만 돌아갑니다. 각 앱은 <a href="shared/story.js">공통 원문 데이터</a>(문장 43개)를 근거로 삼고,
       "문장 12" 같은 배지를 누르면 원문이 뜹니다. 강의 중 만든 것과 같은 방식(바이브코딩)으로 제작되었습니다.
     </p>
+    <div class="row" id="ai-settings-slot" style="gap:12px">
+      <span class="muted" style="font-size:.9rem">AI 연동: 키를 넣으면 인물 인터뷰 챗봇, 명세→프롬프트, 모순 지적기가 실제 Claude를 씁니다. 키는 이 브라우저에만 저장됩니다.</span>
+    </div>
   </div>
 
   <div class="grid two">
@@ -137,5 +140,9 @@
     소스는 <a href="https://github.com/crossall/novelengineering">github.com/crossall/novelengineering</a>에 있습니다.
   </div>
 </div>
+<script src="shared/story.js"></script>
+<script src="shared/ui.js"></script>
+<script src="shared/ai.local.js"></script>
+<script src="shared/ai.js"></script>
 </body>
 </html>
