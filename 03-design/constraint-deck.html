@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>탈고착 제약 카드 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .decks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .flip { perspective: 900px; min-height: 170px; }
+  .flip .inner { position: relative; width: 100%; height: 170px; transform-style: preserve-3d; transition: transform 0.7s ease; }
+  .flip.on .inner { transform: rotateY(180deg); }
+  .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; justify-content: center; }
+  .face.front { background: repeating-linear-gradient(45deg, #e6dfd3 0 8px, #f1ecdf 8px 16px); color: var(--muted); align-items: center; font-size: 2rem; font-weight: 700; }
+  .face.back { transform: rotateY(180deg); background: var(--paper); border: 2px solid var(--line); }
+  .face.back.forbid { border-color: var(--bad); }
+  .face.back.rule { border-color: var(--wolf); }
+  .kind { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .forbid .kind { color: var(--bad); } .rule .kind { color: var(--wolf); }
+  .face .name { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+  .timer { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+  .timer.done { color: var(--bad); }
+  .kept { border-left: 3px solid var(--line); padding-left: 10px; margin-bottom: 10px; }
+  .kept.forbid { border-color: var(--bad); } .kept.rule { border-color: var(--wolf); }
+  .kept label { font-weight: 500; }
+  .msg { margin-top: 8px; font-size: 0.9rem; min-height: 1.4em; }
+  .msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
+  .hist { border-top: 1px solid var(--line); padding: 10px 0; }
+  .hist .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+  .tag { font-size: 0.78rem; padding: 1px 8px; border-radius: 999px; border: 1px solid; }
+  .tag.forbid { color: var(--bad); border-color: var(--bad); } .tag.rule { color: var(--wolf); border-color: var(--wolf); }
+  .hist .how { white-space: pre-wrap; margin: 4px 0; }
+  .hist .k { font-size: 0.9rem; color: var(--muted); }
+  .deck-list { font-size: 0.9rem; columns: 2; column-gap: 20px; }
+  .deck-list li { break-inside: avoid; }
+</style>
+</head>
+<body data-stage="3단계 해결책 설계" data-who="교사" data-title="탈고착 제약 카드">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 확산(대안) → 수렴(기준 선택) → 가추</div>
+    <p>책에 나온 해결책 하나를 "쓰면 안 되는 것"으로 정하고, 제약 두 개를 뽑아 5분 동안 새 아이디어를 생각합니다.
+    "벽돌집이면 되잖아요"라는 익숙한 답을 막았을 때 머릿속에서 무엇이 새로 움직이는지가 생각할 지점입니다.</p>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <button id="btn-draw">카드 뽑기</button>
+        <small class="muted">금지 카드 1장 + 제약 카드 2장</small>
+      </div>
+      <div class="row">
+        <span class="timer" id="timer">5:00</span>
+        <button class="secondary" id="btn-pause" disabled>일시정지</button>
+        <button class="ghost" id="btn-timer-reset" disabled>다시 5분</button>
+      </div>
+    </div>
+    <div class="decks" id="decks" style="margin-top:14px"></div>
+    <div class="msg" id="draw-msg"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>내 아이디어</h3>
+    <div class="field"><label for="idea-name">아이디어 이름</label><input type="text" id="idea-name" maxlength="30" placeholder="예: 줄로 당기는 굴뚝 문"></div>
+    <div class="field"><label for="idea-how">어떻게 작동하나요?</label><textarea id="idea-how" placeholder="늑대가 지붕에 올라오면 … 그러면 …"></textarea></div>
+    <div class="field">
+      <label>어떤 제약을 어떻게 지켰나요? (카드마다 한 줄)</label>
+      <div id="kept"></div>
+    </div>
+    <div class="row"><button id="btn-save">기록에 저장</button></div>
+    <div class="msg" id="idea-msg"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between">
+      <h3 style="margin:0">아이디어 기록</h3>
+      <button class="ghost" id="btn-clear">기록 모두 지우기</button>
+    </div>
+    <div id="history"></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>카드 한눈에 보기</h3>
+    <div class="grid two">
+      <div><b style="color:var(--bad)">금지 카드</b> — 책이 이미 쓴 해결책<ul class="deck-list" id="list-forbid"></ul></div>
+      <div><b style="color:var(--wolf)">제약 카드</b> — 새로 걸리는 조건<ul class="deck-list" id="list-rule"></ul></div>
+    </div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    고착(固着, fixation)은 이미 본 해답이 머릿속을 차지해 다른 길을 못 보는 상태입니다. 책을 읽은 아이들은 "벽돌집·끓는 솥"에서 좀처럼 벗어나지 못합니다. 책의 해법을 금지하면 그 답이 막힌 자리에서 새 탐색이 강제로 시작되고, 제약 카드는 탐색 방향을 좁혀 오히려 아이디어가 더 잘 나오게 합니다(제약이 있어야 확산이 됩니다).
+    수업 사용법: 모둠마다 카드를 뽑고 5분 타이머 안에 아이디어 하나를 쓰게 합니다. 시간이 끝나면 카드를 다시 뽑아 2회전. 기록이 쌓이면 어떤 제약이 어떤 아이디어를 낳았는지 함께 봅니다.
+    관찰 포인트: 금지 카드를 받고 곧바로 "그럼 안 되는데요"라고 멈추는지, 제약을 조건으로 받아들여 우회하는지(가추), "제약을 지켰다"는 설명이 실제 작동 방식과 맞는지.
+    <br><b>명세.</b> 기능: 금지 카드 6장·제약 카드 9장 중 1+2장 무작위 뽑기(뒤집기 애니메이션), 5분 카운트다운(일시정지·다시), 아이디어 입력(이름·작동·카드별 지킨 방법), 기록 저장·삭제, localStorage.
+    입력: 아이디어 이름 2~30자, 작동 설명 10자 이상, 뽑힌 카드마다 지킨 방법 한 줄(5자 이상).
+    출력: 뽑힌 카드 3장(금지 카드는 근거 문장 포함), 남은 시간, 기록 목록(카드와 함께).
+    성공 조건: 뽑힌 카드에 대한 줄이 하나라도 비면 저장되지 않고 어떤 카드가 비었는지 알려준다 · 카드를 뽑지 않으면 저장할 수 없다 · 새로고침해도 뽑힌 카드와 기록이 남는다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const KEY = "ne.03.constraint-deck";
+  const { el, evidenceBadge, load, save, uid } = window.NE;
+  const S = window.STORY;
+  const TIMER_SEC = 5 * 60, RULE_COUNT = 2, MIN_NAME = 2, MIN_HOW = 10, MIN_KEPT = 5;
+
+  const FORBID = [
+    { id: "f1", kind: "forbid", text: "벽돌집 짓기", evidence: [14] },
+    { id: "f2", kind: "forbid", text: "끓는 물 솥", evidence: [41] },
+    { id: "f3", kind: "forbid", text: "약속 시간보다 먼저 가기", evidence: [32] },
+    { id: "f4", kind: "forbid", text: "사과 멀리 던지기", evidence: [36] },
+    { id: "f5", kind: "forbid", text: "버터통에 들어가 구르기", evidence: [38] },
+    { id: "f6", kind: "forbid", text: "문 안 열어 주기", evidence: [18] }
+  ];
+  const RULES = [
+    { id: "r1", kind: "rule", text: "벽돌을 쓸 수 없다", evidence: [] },
+    { id: "r2", kind: "rule", text: "하루 안에 만들어야 한다", evidence: [8] },
+    { id: "r3", kind: "rule", text: "재료를 한 가지만 쓴다", evidence: [] },
+    { id: "r4", kind: "rule", text: "소리를 내면 안 된다", evidence: [] },
+    { id: "r5", kind: "rule", text: "늑대를 다치게 하면 안 된다", evidence: [] },
+    { id: "r6", kind: "rule", text: "세 형제가 함께 써야 한다", evidence: [26] },
+    { id: "r7", kind: "rule", text: "손으로 들 수 있어야 한다", evidence: [] },
+    { id: "r8", kind: "rule", text: "밤에도 작동해야 한다", evidence: [16] },
+    { id: "r9", kind: "rule", text: "돈이 들면 안 된다", evidence: [2] }
+  ];
+  const KIND_LABEL = { forbid: "금지 카드 · 책이 이미 쓴 해법", rule: "제약 카드" };
+
+  let state = normalize(load(KEY, null));
+  let timer = { left: TIMER_SEC, running: false, handle: null };
+
+  function normalize(v) {
+    const base = { drawn: null, history: [] };
+    if (!v || typeof v !== "object") return base;
+    return { ...base, ...v, history: Array.isArray(v.history) ? v.history : [] };
+  }
+  function commit(next) { state = next; save(KEY, state); }
+
+  // ---- 뽑기 ----
+  function pickRandom(list, n) {
+    const shuffled = [...list].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, n);
+  }
+  function draw() {
+    const drawn = { cards: [...pickRandom(FORBID, 1), ...pickRandom(RULES, RULE_COUNT)], at: Date.now() };
+    commit({ ...state, drawn });
+    renderDecks(true); renderKept();
+    setMsg(document.getElementById("draw-msg"), "카드를 뽑았어요. 5분 안에 아이디어를 적어 보세요.", "ok");
+    startTimer();
+  }
+  function cardNode(card, animate) {
+    const back = el("div", { class: "face back " + card.kind }, [
+      el("div", { class: "kind", text: KIND_LABEL[card.kind] }),
+      el("div", { class: "name", text: card.text })
+    ]);
+    if (card.evidence.length) {
+      back.appendChild(el("div", {}, [el("small", { class: "muted", text: "근거 " }), ...card.evidence.map(id => evidenceBadge(id))]));
+    } else if (card.kind === "rule") {
+      back.appendChild(el("small", { class: "muted", text: "책에 없는 새 조건" }));
+    }
+    const wrap = el("div", { class: "flip" + (animate ? "" : " on") }, [
+      el("div", { class: "inner" }, [el("div", { class: "face front", text: "?" }), back])
+    ]);
+    return wrap;
+  }
+  function renderDecks(animate) {
+    const box = document.getElementById("decks");
+    box.innerHTML = "";
+    if (!state.drawn) {
+      box.appendChild(el("p", { class: "muted", text: "아직 뽑은 카드가 없어요. '카드 뽑기'를 눌러 주세요." }));
+      return;
+    }
+    const nodes = state.drawn.cards.map(c => cardNode(c, animate));
+    nodes.forEach(n => box.appendChild(n));
+    if (animate) nodes.forEach((n, i) => setTimeout(() => n.classList.add("on"), 150 + i * 250));
+  }
+
+  // ---- 타이머 ----
+  function fmt(sec) { return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
+  function renderTimer() {
+    const t = document.getElementById("timer");
+    t.textContent = timer.left > 0 ? fmt(timer.left) : "시간 끝!";
+    t.classList.toggle("done", timer.left <= 0);
+    document.getElementById("btn-pause").textContent = timer.running ? "일시정지" : "계속";
+    document.getElementById("btn-pause").disabled = !state.drawn || timer.left <= 0;
+    document.getElementById("btn-timer-reset").disabled = !state.drawn;
+  }
+  function tick() {
+    if (!timer.running) return;
+    timer = { ...timer, left: Math.max(0, timer.left - 1) };
+    if (timer.left === 0) stopTimer();
+    renderTimer();
+  }
+  function stopTimer() {
+    if (timer.handle) clearInterval(timer.handle);
+    timer = { ...timer, running: false, handle: null };
+  }
+  function startTimer() {
+    stopTimer();
+    timer = { left: TIMER_SEC, running: true, handle: setInterval(tick, 1000) };
+    renderTimer();
+  }
+  function togglePause() {
+    if (timer.left <= 0) return;
+    if (timer.running) stopTimer();
+    else timer = { ...timer, running: true, handle: setInterval(tick, 1000) };
+    renderTimer();
+  }
+
+  // ---- 아이디어 입력 ----
+  function renderKept() {
+    const box = document.getElementById("kept");
+    box.innerHTML = "";
+    if (!state.drawn) { box.appendChild(el("small", { class: "muted", text: "카드를 뽑으면 여기에 칸이 생겨요." })); return; }
+    state.drawn.cards.forEach(c => box.appendChild(el("div", { class: "kept " + c.kind }, [
+      el("label", { for: "kept-" + c.id, text: (c.kind === "forbid" ? "금지: " : "제약: ") + c.text }),
+      el("input", { type: "text", id: "kept-" + c.id, maxlength: "120", placeholder: c.kind === "forbid" ? "이것 대신 무엇을 썼나요?" : "이 조건을 어떻게 지켰나요?" })
+    ])));
+  }
+  function readIdea() {
+    const cards = state.drawn ? state.drawn.cards : [];
+    return {
+      name: document.getElementById("idea-name").value.trim(),
+      how: document.getElementById("idea-how").value.trim(),
+      kept: cards.map(c => ({ card: c.text, kind: c.kind, line: (document.getElementById("kept-" + c.id) || { value: "" }).value.trim() }))
+    };
+  }
+  function validate(idea) {
+    if (!state.drawn) return "먼저 카드를 뽑아 주세요.";
+    if (idea.name.length < MIN_NAME) return "아이디어 이름을 " + MIN_NAME + "자 이상 적어 주세요.";
+    if (idea.how.length < MIN_HOW) return "어떻게 작동하는지 " + MIN_HOW + "자 이상 설명해 주세요.";
+    const missing = idea.kept.filter(k => k.line.length < MIN_KEPT).map(k => "'" + k.card + "'");
+    if (missing.length) return "이 카드에 대한 설명이 부족해요(" + MIN_KEPT + "자 이상): " + missing.join(", ");
+    return "";
+  }
+  function saveIdea() {
+    const msg = document.getElementById("idea-msg");
+    const idea = readIdea();
+    const err = validate(idea);
+    if (err) { setMsg(msg, err, "bad"); return; }
+    const entry = { id: uid(), at: Date.now(), cards: state.drawn.cards.map(c => ({ kind: c.kind, text: c.text })), ...idea };
+    commit({ ...state, history: [entry, ...state.history] });
+    document.getElementById("idea-name").value = ""; document.getElementById("idea-how").value = "";
+    renderKept(); renderHistory();
+    setMsg(msg, "기록에 저장했어요: " + entry.name, "ok");
+  }
+
+  // ---- 기록 ----
+  function renderHistory() {
+    const box = document.getElementById("history");
+    box.innerHTML = "";
+    if (!state.history.length) { box.appendChild(el("p", { class: "muted", text: "저장된 아이디어가 아직 없어요." })); return; }
+    state.history.forEach(h => box.appendChild(el("div", { class: "hist" }, [
+      el("div", { class: "row", style: "justify-content:space-between" }, [
+        el("b", { text: h.name }),
+        el("div", { class: "row" }, [
+          el("small", { class: "muted", text: new Date(h.at).toLocaleString("ko-KR") }),
+          el("button", { class: "ghost", style: "padding:2px 8px;font-size:0.8rem", text: "삭제",
+            onclick: () => { commit({ ...state, history: state.history.filter(x => x.id !== h.id) }); renderHistory(); } })
+        ])
+      ]),
+      el("div", { class: "tags" }, h.cards.map(c => el("span", { class: "tag " + c.kind, text: c.text }))),
+      el("div", { class: "how", text: h.how }),
+      ...h.kept.map(k => el("div", { class: "k", text: "· " + k.card + " → " + k.line }))
+    ])));
+  }
+  function renderLists() {
+    const f = document.getElementById("list-forbid"), r = document.getElementById("list-rule");
+    FORBID.forEach(c => f.appendChild(el("li", {}, [c.text + " ", ...c.evidence.map(id => evidenceBadge(id))])));
+    RULES.forEach(c => r.appendChild(el("li", {}, [c.text + " ", ...c.evidence.map(id => evidenceBadge(id))])));
+  }
+  function setMsg(node, text, kind) { node.textContent = text; node.className = "msg " + (kind || ""); }
+
+  document.getElementById("btn-draw").addEventListener("click", draw);
+  document.getElementById("btn-pause").addEventListener("click", togglePause);
+  document.getElementById("btn-timer-reset").addEventListener("click", startTimer);
+  document.getElementById("btn-save").addEventListener("click", saveIdea);
+  document.getElementById("btn-clear").addEventListener("click", () => {
+    if (!state.history.length || !confirm("기록을 모두 지울까요?")) return;
+    commit({ ...state, history: [] }); renderHistory();
+  });
+  renderDecks(false); renderKept(); renderTimer(); renderHistory(); renderLists();
+  if (state.drawn) setMsg(document.getElementById("draw-msg"), "지난번에 뽑은 카드예요. '다시 5분'을 누르면 타이머가 시작돼요.", "");
+})();
+</script>
+</body>
+</html>

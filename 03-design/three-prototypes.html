@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아이디어 3개, 선택 1개 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .idea { position: relative; }
+  .idea .num { position: absolute; top: 10px; right: 14px; font-size: 0.8rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { padding: 3px 10px; font-size: 0.85rem; font-weight: 500; background: #fff; color: var(--muted); border-color: var(--line); }
+  .chips button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .chips input { width: 6.5em; padding: 3px 8px; font-size: 0.85rem; }
+  .field small.err { color: var(--bad); }
+  .plan { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; background: var(--line); padding: 2px; border-radius: 6px; max-width: 300px; }
+  .plan button { aspect-ratio: 1; width: 100%; padding: 0; border: none; border-radius: 2px; background: #fff; }
+  .plan button.v1 { background: var(--brick); } .plan button.v2 { background: var(--straw); } .plan button.v3 { background: var(--wolf); }
+  .legend { display: flex; gap: 10px; font-size: 0.8rem; color: var(--muted); margin: 6px 0; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 3px; border: 1px solid var(--line); }
+  .progress { display: flex; align-items: center; gap: 10px; margin: 14px 0; }
+  .bar { flex: 1; height: 10px; background: var(--line); border-radius: 999px; overflow: hidden; }
+  .bar div { height: 100%; background: var(--ok); transition: width 0.3s; }
+  table.crit td select { width: 64px; padding: 4px 6px; }
+  table.crit tr.total td { font-weight: 700; color: var(--accent); }
+  .choice label { display: flex; align-items: center; gap: 8px; font-weight: 500; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; cursor: pointer; }
+  .choice label.on { border-color: var(--accent); background: var(--accent-soft); }
+  .found { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .found .badge { font-size: 0.8rem; }
+  .found .badge.no { background: #f1ecdf; color: var(--muted); text-decoration: line-through; }
+  .msg { margin-top: 8px; font-size: 0.9rem; min-height: 1.4em; }
+  .msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); } .msg.warn { color: var(--warn); }
+  .done-badge { font-size: 1rem; padding: 4px 14px; }
+</style>
+</head>
+<body data-stage="3단계 해결책 설계" data-who="학생" data-title="아이디어 3개, 선택 1개">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 확산(대안) → 수렴(기준 선택) → 가추</div>
+    <p>아이디어를 세 개 만들고, 여섯 가지 기준으로 점수를 매긴 뒤 하나를 고릅니다.
+    마지막에는 "왜 이것을 골랐는지"를 기준의 말로 써야 해요. 점수가 아니라 이유가 선택을 정당화합니다.</p>
+  </div>
+
+  <div class="row" style="justify-content:space-between">
+    <h2 style="margin:0">1. 아이디어 세 개</h2>
+    <div class="row"><button class="secondary" id="btn-example">예시 불러오기</button><button class="ghost" id="btn-reset">모두 지우기</button></div>
+  </div>
+  <div class="progress"><div class="bar"><div id="bar"></div></div><b id="progress-text">3개 중 0개 완성</b></div>
+  <div class="grid three" id="ideas"></div>
+
+  <div class="card" style="margin-top:20px">
+    <h2>2. 기준으로 점수 매기기 (1 = 잘 못함 … 5 = 아주 잘함)</h2>
+    <div style="overflow-x:auto"><table class="crit" id="crit-table"></table></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>3. 하나 고르기</h2>
+    <div class="choice" id="choice"></div>
+    <div class="field" style="margin-top:12px">
+      <label for="just">왜 이 아이디어를 골랐나요? (기준 이름을 두 개 이상 넣어서 설명해요)</label>
+      <textarea id="just" placeholder="예: 늑대 입김에 버티고, 하루 안에 만들 수 있어서 골랐어요. 굴뚝도 …"></textarea>
+    </div>
+    <div class="found" id="found"></div>
+    <div class="row"><span id="done-badge" class="badge done-badge" hidden>정당화 완료</span><span class="msg" id="just-msg" style="margin:0"></span></div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 2단계에서 정의한 문제를 들고 와서 10분 안에 아이디어 세 개를 채우게 합니다(완성도보다 개수). 그다음 기준 점수를 매기고, 마지막 정당화 글은 반드시 기준의 말로 쓰게 합니다. 점수 합계와 고른 아이디어가 다르면 "왜 그런지" 이야기하게 하세요 — 그 어긋남이 가장 좋은 토론 재료입니다.
+    관찰 포인트: 세 아이디어가 정말 다른지(같은 것의 변형인지), 재료 선택이 이야기 속 제약과 맞는지, 정당화에서 점수가 아니라 기준 이름을 근거로 쓰는지(수렴), 스케치와 "어떻게 작동하나" 설명이 서로 맞는지.
+    <br><b>명세.</b> 기능: 아이디어 칸 3개(이름·인물·문제·재료 칩·작동 설명·12×8 스케치), 완성 개수 표시, 6개 기준 × 3개 아이디어 점수와 합계, 라디오로 하나 선택, 정당화 글의 기준 낱말 검사, 예시 불러오기, localStorage 저장.
+    입력: 이름·문제 한 줄·작동 설명(글), 재료 1개 이상(직접 추가 가능), 점수 1~5, 선택 1개, 정당화 글.
+    출력: "3개 중 N개 완성", 아이디어별 합계, 정당화 글에서 찾은 기준 목록, '정당화 완료' 배지.
+    성공 조건: 완성 = 이름+문제+작동 설명+재료 1개 이상 · 정당화 글에 기준 이름(또는 핵심 낱말 입김·하루·재료·굴뚝·문·형)이 2개 이상 들어가야 배지가 뜬다 · 어떤 기준을 찾았고 못 찾았는지 보인다 · 새로고침해도 남는다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const KEY = "ne.03.three-prototypes";
+  const { el, load, save } = window.NE;
+  const S = window.STORY;
+  const IDEA_COUNT = 3, COLS = 12, ROWS = 8, SCORE_MAX = 5, MIN_FOUND = 2;
+  const MATERIALS = ["짚", "나뭇가지", "벽돌", "끈", "솥", "나무판", "돌", "물"];
+  const CELL = ["빈칸", "벽", "문", "장치"];
+  const CRITERIA = [
+    { name: "늑대 입김에 버틴다", keys: ["입김", "버틴", "버텨", "불어도"] },
+    { name: "하루 안에 만들 수 있다", keys: ["하루", "빨리 만들", "금방 만들"] },
+    { name: "구할 수 있는 재료로 만든다", keys: ["재료", "구할 수", "구하기"] },
+    { name: "굴뚝으로 못 들어오게 한다", keys: ["굴뚝"] },
+    { name: "말로 속여도 문이 안 열린다", keys: ["문이", "문을", "문은", "문도", "속여도", "속이", "안 열"] },
+    { name: "형들도 같이 쓸 수 있다", keys: ["형들", "형제", "형도", "형이", "같이 쓸", "함께 쓸"] }
+  ];
+
+  const emptyGrid = () => Array.from({ length: COLS * ROWS }, () => 0);
+  const emptyIdea = () => ({ name: "", who: "", problem: "", materials: [], how: "", grid: emptyGrid() });
+  const fresh = () => ({
+    ideas: Array.from({ length: IDEA_COUNT }, emptyIdea),
+    scores: Array.from({ length: IDEA_COUNT }, () => CRITERIA.map(() => 0)),
+    chosen: null, justification: ""
+  });
+  let state = normalize(load(KEY, null));
+
+  function normalize(v) {
+    if (!v || !Array.isArray(v.ideas) || v.ideas.length !== IDEA_COUNT) return fresh();
+    const base = fresh();
+    return {
+      ...base, ...v,
+      ideas: v.ideas.map(d => ({ ...emptyIdea(), ...d, grid: Array.isArray(d.grid) && d.grid.length === COLS * ROWS ? d.grid : emptyGrid() })),
+      scores: Array.isArray(v.scores) && v.scores.length === IDEA_COUNT ? v.scores : base.scores
+    };
+  }
+  function commit(next) { state = next; save(KEY, state); }
+  const setIdea = (st, i, patch) => ({ ...st, ideas: st.ideas.map((d, j) => j === i ? { ...d, ...patch } : d) });
+  const setScore = (st, i, k, v) => ({ ...st, scores: st.scores.map((row, j) => j === i ? row.map((x, m) => m === k ? v : x) : row) });
+  const isComplete = d => !!(d.name.trim() && d.problem.trim() && d.how.trim() && d.materials.length);
+  const ideaLabel = (d, i) => d.name.trim() || "아이디어 " + (i + 1);
+  const totalOf = i => state.scores[i].reduce((a, b) => a + b, 0);
+
+  // ---- 예시 ----
+  function boxGrid(doorCol, devices) {
+    return emptyGrid().map((_, idx) => {
+      const r = Math.floor(idx / COLS), c = idx % COLS;
+      if (devices.some(([dr, dc]) => dr === r && dc === c)) return 3;
+      if (r === 7 && c === doorCol) return 2;
+      const wall = (r === 1 || r === 7) && c >= 2 && c <= 9 || (c === 2 || c === 9) && r >= 1 && r <= 7;
+      return wall ? 1 : 0;
+    });
+  }
+  const EXAMPLES = [
+    { name: "줄로 닫는 굴뚝 뚜껑", who: "third", problem: "늑대가 굴뚝으로 들어온다 (문장 40)", materials: ["나무판", "끈", "벽돌"],
+      how: "굴뚝 안쪽에 나무판 뚜껑을 달고 끈을 방까지 늘어뜨려요. 늑대가 지붕에 올라오는 소리가 나면 안에서 끈을 당겨 뚜껑을 닫고 벽돌로 눌러요.",
+      grid: boxGrid(5, [[0, 8], [1, 8]]) },
+    { name: "안에서만 여는 걸쇠", who: "first", problem: "늑대가 문을 열어 달라고 말로 속인다 (문장 17)", materials: ["나뭇가지", "끈", "돌"],
+      how: "문 안쪽에 굵은 나뭇가지를 가로로 걸고 끈으로 묶어요. 아래에 돌을 놓아 못 밀리게 해요. 밖에서 무슨 말을 해도 안에서만 열 수 있어요.",
+      grid: boxGrid(5, [[6, 4], [6, 5], [6, 6]]) },
+    { name: "끈 경보 솥", who: "second", problem: "늑대가 밤에 몰래 온다 (문장 16)", materials: ["끈", "솥", "돌"],
+      how: "집 둘레에 끈을 낮게 치고 끝에 돌을 매달아 솥 위에 걸어 둬요. 늑대가 끈을 건드리면 돌이 솥을 쳐서 땡 소리가 나고 형들이 먼저 알아요.",
+      grid: boxGrid(5, [[0, 1], [0, 10], [7, 0], [7, 11], [3, 10]]) }
+  ];
+  function loadExample() {
+    const dirty = state.ideas.some(d => d.name || d.problem || d.how || d.materials.length);
+    if (dirty && !confirm("지금 쓴 내용을 지우고 예시를 넣을까요?")) return;
+    commit({ ...fresh(), ideas: EXAMPLES.map(e => ({ ...emptyIdea(), ...e })) });
+    renderAll();
+  }
+
+  // ---- 아이디어 카드 ----
+  function textField(i, key, label, placeholder, multi) {
+    const input = el(multi ? "textarea" : "input", { type: "text", placeholder, "aria-label": label });
+    input.value = state.ideas[i][key];
+    input.addEventListener("input", () => {
+      commit(setIdea(state, i, { [key]: input.value }));
+      renderProgress(); if (key === "name") { renderCriteria(); renderChoice(); }
+    });
+    return el("div", { class: "field" }, [el("label", { text: label }), input]);
+  }
+  function whoField(i) {
+    const sel = el("select", { "aria-label": "누구를 위해" });
+    sel.appendChild(el("option", { value: "", text: "고르세요" }));
+    S.characters.forEach(c => sel.appendChild(el("option", { value: c.id, text: c.name })));
+    sel.value = state.ideas[i].who;
+    sel.addEventListener("change", () => commit(setIdea(state, i, { who: sel.value })));
+    return el("div", { class: "field" }, [el("label", { text: "누구를 위해" }), sel]);
+  }
+  function materialsField(i) {
+    const d = state.ideas[i];
+    const all = [...MATERIALS, ...d.materials.filter(m => !MATERIALS.includes(m))];
+    const chips = all.map(m => el("button", { type: "button", class: d.materials.includes(m) ? "on" : "", text: m, "aria-pressed": String(d.materials.includes(m)),
+      onclick: () => {
+        const materials = d.materials.includes(m) ? d.materials.filter(x => x !== m) : [...d.materials, m];
+        commit(setIdea(state, i, { materials })); renderIdea(i); renderProgress();
+      } }));
+    const custom = el("input", { type: "text", placeholder: "다른 재료", maxlength: "10" });
+    const err = el("small", { class: "err" });
+    const add = el("button", { type: "button", text: "+", onclick: () => {
+      const m = custom.value.trim();
+      if (!m) { err.textContent = "재료 이름을 적어 주세요."; return; }
+      if (all.includes(m)) { err.textContent = "이미 있는 재료예요."; return; }
+      commit(setIdea(state, i, { materials: [...d.materials, m] })); renderIdea(i); renderProgress();
+    } });
+    return el("div", { class: "field" }, [el("label", { text: "재료 (1개 이상)" }), el("div", { class: "chips" }, [...chips, custom, add]), err]);
+  }
+  function planField(i) {
+    const d = state.ideas[i];
+    const cells = d.grid.map((v, idx) => el("button", { type: "button", class: "v" + v, title: CELL[v], "aria-label": CELL[v],
+      onclick: () => {
+        const grid = d.grid.map((x, j) => j === idx ? (x + 1) % CELL.length : x);
+        commit(setIdea(state, i, { grid })); renderIdea(i);
+      } }));
+    const legend = el("div", { class: "legend" }, [
+      el("span", {}, [el("i", { style: "background:#fff" }), "빈칸"]), el("span", {}, [el("i", { style: "background:var(--brick)" }), "벽"]),
+      el("span", {}, [el("i", { style: "background:var(--straw)" }), "문"]), el("span", {}, [el("i", { style: "background:var(--wolf)" }), "장치"]),
+      el("button", { type: "button", class: "ghost", style: "padding:0 8px;font-size:0.8rem", text: "지우기",
+        onclick: () => { commit(setIdea(state, i, { grid: emptyGrid() })); renderIdea(i); } })
+    ]);
+    return el("div", { class: "field" }, [el("label", { text: "한 줄 스케치 (칸을 누르면 바뀌어요)" }), legend, el("div", { class: "plan" }, cells)]);
+  }
+  function ideaCard(i) {
+    const d = state.ideas[i];
+    return el("div", { class: "card idea", id: "idea-" + i }, [
+      el("span", { class: "num badge " + (isComplete(d) ? "ok" : "warn"), text: isComplete(d) ? "완성" : "작성 중" }),
+      el("h3", { text: "아이디어 " + (i + 1) }),
+      textField(i, "name", "이름", "예: 굴뚝 뚜껑"),
+      whoField(i),
+      textField(i, "problem", "어떤 문제를 풀어요?", "예: 늑대가 굴뚝으로 들어온다"),
+      materialsField(i),
+      textField(i, "how", "어떻게 작동하나요?", "늑대가 오면 … 그러면 …", true),
+      planField(i)
+    ]);
+  }
+  function renderIdea(i) {
+    const old = document.getElementById("idea-" + i);
+    old.replaceWith(ideaCard(i));
+  }
+  function renderIdeas() {
+    const box = document.getElementById("ideas");
+    box.innerHTML = "";
+    state.ideas.forEach((_, i) => box.appendChild(ideaCard(i)));
+  }
+  function renderProgress() {
+    const n = state.ideas.filter(isComplete).length;
+    document.getElementById("progress-text").textContent = IDEA_COUNT + "개 중 " + n + "개 완성";
+    document.getElementById("bar").style.width = (n / IDEA_COUNT * 100) + "%";
+    state.ideas.forEach((d, i) => {
+      const b = document.querySelector("#idea-" + i + " .num");
+      if (b) { b.textContent = isComplete(d) ? "완성" : "작성 중"; b.className = "num badge " + (isComplete(d) ? "ok" : "warn"); }
+    });
+  }
+
+  // ---- 기준 점수 ----
+  function scoreSelect(i, k) {
+    const sel = el("select", { "aria-label": "점수" });
+    sel.appendChild(el("option", { value: "", text: "–" }));
+    for (let v = 1; v <= SCORE_MAX; v++) sel.appendChild(el("option", { value: v, text: String(v) }));
+    sel.value = state.scores[i][k] ? String(state.scores[i][k]) : "";
+    sel.addEventListener("change", () => {
+      const v = sel.value === "" ? 0 : Number(sel.value);
+      if (!Number.isInteger(v) || v < 0 || v > SCORE_MAX) return;
+      commit(setScore(state, i, k, v)); renderCriteria();
+    });
+    return sel;
+  }
+  function renderCriteria() {
+    const t = document.getElementById("crit-table");
+    t.innerHTML = "";
+    t.appendChild(el("tr", {}, [el("th", { text: "기준" }), ...state.ideas.map((d, i) => el("th", { text: ideaLabel(d, i) }))]));
+    CRITERIA.forEach((c, k) => t.appendChild(el("tr", {}, [el("td", { text: c.name }), ...state.ideas.map((_, i) => el("td", {}, [scoreSelect(i, k)]))])));
+    t.appendChild(el("tr", { class: "total" }, [el("td", { text: "합계" }), ...state.ideas.map((_, i) => el("td", { text: totalOf(i) + "점" }))]));
+  }
+
+  // ---- 선택과 정당화 ----
+  function renderChoice() {
+    const box = document.getElementById("choice");
+    box.innerHTML = "";
+    state.ideas.forEach((d, i) => {
+      const radio = el("input", { type: "radio", name: "chosen", value: i });
+      radio.checked = state.chosen === i;
+      radio.addEventListener("change", () => { commit({ ...state, chosen: i }); renderChoice(); renderCheck(); });
+      box.appendChild(el("label", { class: state.chosen === i ? "on" : "" }, [radio, ideaLabel(d, i),
+        el("small", { class: "muted", text: totalOf(i) + "점" + (isComplete(d) ? "" : " · 미완성") })]));
+    });
+  }
+  function findCriteria(text) {
+    return CRITERIA.map(c => ({ name: c.name, hit: [c.name, ...c.keys].some(k => text.includes(k)) }));
+  }
+  function renderCheck() {
+    const text = state.justification;
+    const found = findCriteria(text);
+    const hits = found.filter(f => f.hit);
+    const box = document.getElementById("found");
+    box.innerHTML = "";
+    found.forEach(f => box.appendChild(el("span", { class: "badge " + (f.hit ? "ok" : "no"), text: f.name })));
+    const msg = document.getElementById("just-msg");
+    const badge = document.getElementById("done-badge");
+    const chosen = state.chosen !== null ? state.ideas[state.chosen] : null;
+    const ok = chosen !== null && hits.length >= MIN_FOUND;
+    badge.hidden = !ok;
+    if (chosen === null) return setMsg(msg, "먼저 아이디어 하나를 골라 주세요.", "bad");
+    if (!text.trim()) return setMsg(msg, "고른 이유를 써 주세요. 찾은 기준: 0개", "bad");
+    if (hits.length < MIN_FOUND) return setMsg(msg, "기준을 " + hits.length + "개 찾았어요. " + (MIN_FOUND - hits.length) + "개 더 넣어 주세요.", "warn");
+    if (!isComplete(chosen)) return setMsg(msg, "기준 " + hits.length + "개를 찾았어요. 고른 아이디어는 아직 미완성이에요.", "warn");
+    setMsg(msg, "기준 " + hits.length + "개로 설명했어요. 잘했어요!", "ok");
+  }
+  function setMsg(node, text, kind) { node.textContent = text; node.className = "msg " + kind; }
+
+  function renderAll() {
+    renderIdeas(); renderProgress(); renderCriteria(); renderChoice();
+    document.getElementById("just").value = state.justification; renderCheck();
+  }
+  document.getElementById("just").addEventListener("input", e => { commit({ ...state, justification: e.target.value }); renderCheck(); });
+  document.getElementById("btn-example").addEventListener("click", loadExample);
+  document.getElementById("btn-reset").addEventListener("click", () => {
+    if (!confirm("아이디어·점수·선택을 모두 지울까요?")) return;
+    commit(fresh()); renderAll();
+  });
+  renderAll();
+})();
+</script>
+</body>
+</html>
