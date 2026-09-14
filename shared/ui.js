@@ -18,10 +18,10 @@
     const depth = (location.pathname.match(/\//g) || []).length;
     const home = b.dataset.home || "../index.html";
     const header = el("header", { class: "ne-header" }, [
-      el("a", { class: "home", href: home, text: "← 노벨 엔지니어링 × 바이브코딩" }),
-      b.dataset.stage ? el("span", { class: "stage", text: b.dataset.stage }) : "",
-      b.dataset.who ? el("span", { class: "who", text: b.dataset.who + "가 만드는 것" }) : "",
-      el("span", { class: "title", text: b.dataset.title || document.title })
+      el("a", { class: "ne-home", href: home, text: "← 노벨 엔지니어링 × 바이브코딩" }),
+      b.dataset.stage ? el("span", { class: "ne-stage", text: b.dataset.stage }) : "",
+      b.dataset.who ? el("span", { class: "ne-who", text: b.dataset.who + "가 만드는 것" }) : "",
+      el("span", { class: "ne-title", text: b.dataset.title || document.title })
     ].filter(Boolean));
     b.insertBefore(header, b.firstChild);
     const footer = el("footer", { class: "ne-footer", text: "아기돼지 삼형제 · 노벨 엔지니어링 × 바이브코딩 예시 · 모든 데이터는 이 브라우저에만 저장됩니다" });

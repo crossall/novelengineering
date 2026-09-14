@@ -46,10 +46,10 @@ code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; fon
   gap: 14px;
   flex-wrap: wrap;
 }
-.ne-header .home { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
-.ne-header .stage { font-size: 0.8rem; color: var(--paper); background: var(--accent); padding: 2px 10px; border-radius: 999px; }
-.ne-header .who { font-size: 0.8rem; color: var(--muted); border: 1px solid var(--line); padding: 2px 10px; border-radius: 999px; }
-.ne-header .title { font-weight: 700; }
+.ne-header .ne-home { text-decoration: none; color: var(--muted); font-size: 0.9rem; }
+.ne-header .ne-stage { font-size: 0.8rem; color: var(--paper); background: var(--accent); padding: 2px 10px; border-radius: 999px; }
+.ne-header .ne-who { font-size: 0.8rem; color: var(--muted); border: 1px solid var(--line); padding: 2px 10px; border-radius: 999px; }
+.ne-header .ne-title { font-weight: 700; }
 .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 20px 60px; }
 .intro { background: var(--accent-soft); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 20px; }
 .intro .thinking { font-weight: 600; color: var(--accent); }

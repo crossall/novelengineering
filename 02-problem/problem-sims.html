@@ -13,8 +13,8 @@
 .panel.active { display: block; }
 .sim { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 720px) { .sim { grid-template-columns: 1fr; } }
-.stage { background: linear-gradient(#e9f0f7, #fbf8f2 70%); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; min-height: 220px; position: relative; }
-.stage svg { width: 100%; height: auto; display: block; }
+.sim-stage { background: linear-gradient(#e9f0f7, #fbf8f2 70%); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; min-height: 220px; position: relative; }
+.sim-stage svg { width: 100%; height: auto; display: block; }
 .house-body { transform-box: view-box; transform-origin: 170px 152px; }
 .house-body.wobble { animation: wobble .6s ease-in-out; }
 .house-body.fall { animation: fall .9s ease-in forwards; }
@@ -89,7 +89,7 @@
         </div>
         <div class="result" id="wind-result">재료를 고르고 "후~ 불기"를 눌러 보세요.</div>
       </div>
-      <div class="stage">
+      <div class="sim-stage">
         <svg viewBox="0 0 260 170" aria-label="집과 늑대">
           <line x1="0" y1="152" x2="260" y2="152" stroke="#cfc4b2" stroke-width="2"/>
           <g><circle cx="30" cy="120" r="16" fill="#4a4f5c"/><polygon points="18,108 24,96 30,108" fill="#4a4f5c"/><polygon points="30,108 36,96 42,108" fill="#4a4f5c"/><circle cx="34" cy="118" r="2" fill="#fff"/><rect x="18" y="134" width="24" height="18" rx="4" fill="#4a4f5c"/></g>
@@ -128,7 +128,7 @@
         <div class="row"><button id="run-chase">달리기 시작</button></div>
         <div class="result" id="chase-result"></div>
       </div>
-      <div class="stage">
+      <div class="sim-stage">
         <div class="track">
           <span class="start">짚집</span><span class="home">🏠</span>
           <div class="line"></div>
