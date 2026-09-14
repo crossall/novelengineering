@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>제약 카드 생성기 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .kind-group { margin-bottom: 18px; }
+  .kind-group h3 { display: flex; align-items: center; gap: 8px; }
+  .ccard { position: relative; }
+  .ccard .kind { position: absolute; top: 10px; right: 12px; }
+  .ccard .txt { margin: 4px 0 8px; padding-right: 48px; }
+  .ccard .del { position: absolute; bottom: 10px; right: 12px; font-size: 0.78rem; padding: 2px 8px; }
+  .kind.k시대 { background: #e8e4f5; color: #5b4b9e; } .kind.k장소 { background: #dff0e6; color: #2f7a4f; }
+  .kind.k자원 { background: #fbecd0; color: #9a6a12; } .kind.k시간 { background: #dcecf8; color: #2c5f8a; }
+  .kind.k위협 { background: #f9e0dd; color: var(--bad); } .kind.k인물 { background: #f1ecdf; color: var(--stick); }
+  .draw { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: center; }
+  @media (max-width: 640px) { .draw { grid-template-columns: 1fr; } }
+  .flip { perspective: 900px; width: 220px; height: 150px; }
+  .flip .inner { position: relative; width: 100%; height: 100%; transition: transform .7s; transform-style: preserve-3d; }
+  .flip.flipped .inner { transform: rotateY(180deg); }
+  .flip .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); border: 1px solid var(--line); padding: 12px; display: flex; flex-direction: column; justify-content: center; }
+  .flip .front { background: var(--accent); color: #fff; font-size: 2rem; font-weight: 700; text-align: center; }
+  .flip .back { background: #fff; transform: rotateY(180deg); font-size: 0.9rem; overflow: hidden; }
+  .picker { border: 1px solid var(--line); border-radius: 8px; max-height: 180px; overflow-y: auto; margin-top: 6px; background: #fff; }
+  .picker .hit { padding: 6px 10px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 0.9rem; }
+  .picker .hit:hover { background: var(--accent-soft); }
+  .picker .hit.on { background: #e3f3e8; }
+  .chosen { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; min-height: 24px; }
+  .chosen .evidence::after { content: " ×"; }
+  .msg { font-size: 0.85rem; min-height: 1.2em; margin-top: 6px; color: var(--bad); }
+  .msg.ok { color: var(--ok); }
+</style>
+</head>
+<body data-stage="1단계 책 읽기" data-who="교사" data-title="제약 카드 생성기">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 상황 모형(수렴) → 관점 취하기</div>
+    <p>이야기 속 세상에는 "할 수 없는 것"이 있어요. 전기도 없고, 돈도 없고, 늑대는 밤에 와요. 이런 <b>제약</b>을 카드로 모아 봅니다. 카드마다 근거 문장이 붙어 있어요. 여러분도 책에서 새 제약을 찾아 카드로 만들어 보세요. 근거 문장이 없으면 카드는 만들어지지 않아요.</p>
+  </div>
+
+  <div class="card" style="margin-bottom:18px">
+    <h3>카드 한 장 뽑기</h3>
+    <div class="draw">
+      <div class="flip" id="flip"><div class="inner">
+        <div class="face front">?</div>
+        <div class="face back" id="flipBack"></div>
+      </div></div>
+      <div>
+        <p class="muted">뽑힌 카드의 제약이 우리 설계에 어떤 영향을 주는지 이야기해 보세요.</p>
+        <div class="row"><button type="button" id="drawBtn">카드 한 장 뽑기</button><button type="button" class="secondary" id="copyBtn">카드 전체 복사</button></div>
+        <div class="msg" id="copyMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="groups"></div>
+
+  <div class="card" style="margin-top:6px">
+    <h3>내 제약 카드 만들기</h3>
+    <div class="grid two">
+      <div>
+        <div class="field"><label for="kindSel">종류</label><select id="kindSel"></select></div>
+        <div class="field"><label for="ctext">제약 내용</label><input type="text" id="ctext" maxlength="80" placeholder="예) 늑대는 낮에도 찾아온다."></div>
+      </div>
+      <div>
+        <div class="field">
+          <label for="evq">근거 문장 찾기(1개 이상 필수)</label>
+          <input type="text" id="evq" placeholder="낱말로 찾기. 예) 늑대, 아침, 굴뚝" autocomplete="off">
+          <div class="picker" id="picker"></div>
+          <div class="chosen" id="chosen"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row"><button type="button" id="saveBtn" disabled>카드 저장</button><span class="muted" id="saveWhy" style="font-size:0.85rem"></span></div>
+    <div class="msg" id="saveMsg"></div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 먼저 "카드 한 장 뽑기"로 제약 하나를 무작위로 띄우고 "이 제약 때문에 셋째는 무엇을 못 했을까?"를 묻습니다. 이어서 모둠별로 책에서 새 제약을 찾아 카드를 만들게 하고, "카드 전체 복사"로 학습지에 붙입니다.
+    관찰 포인트: 학생이 근거 문장을 고를 때 제약과 문장이 실제로 이어지는지(예: "돈이 없다"에 문장 2를 고르는가) 보세요. 근거를 찾지 못해 저장 버튼이 눌리지 않는 순간이, 학생이 상상과 텍스트를 구분하기 시작하는 지점입니다.
+    <br><b>명세.</b> 기능: STORY.constraints를 종류(시대·장소·자원·시간·위협·인물)별 카드로 표시, 무작위 뽑기(뒤집기 애니메이션), 사용자 카드 생성·삭제(localStorage), 전체 카드 텍스트 복사. 입력: 종류 선택, 제약 내용(1~80자), 근거 문장(검색 후 클릭, 1개 이상). 출력: 근거 배지가 붙은 카드, 클립보드용 텍스트("[종류] 내용 (근거: 문장 n)"). 성공 조건: 내용과 근거가 모두 있어야 저장 버튼이 활성화된다, 저장한 카드는 새로고침 후에도 남고 삭제할 수 있다, 복사 결과에 모든 카드와 근거 번호가 포함된다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const S = window.STORY, NE = window.NE;
+  const KEY = "ne.reading.constraints.custom";
+  const KINDS = ["시대", "장소", "자원", "시간", "위협", "인물"];
+  const MAX_TEXT = 80, MAX_HITS = 12;
+  const $ = id => document.getElementById(id);
+
+  let custom = NE.load(KEY, []).filter(c => c && c.text && Array.isArray(c.evidence));
+  let chosen = [];   // 새 카드에 붙일 근거 id 목록
+
+  const allCards = () => S.constraints.concat(custom);
+
+  function kindBadge(kind) { return NE.el("span", { class: "badge kind k" + kind, text: kind }); }
+
+  function cardNode(c) {
+    const node = NE.el("div", { class: "card ccard" }, [kindBadge(c.kind), NE.el("div", { class: "txt", text: c.text })]);
+    c.evidence.forEach(id => node.appendChild(NE.evidenceBadge(id)));
+    if (c.custom) node.appendChild(NE.el("button", { type: "button", class: "ghost del", text: "삭제", onclick: () => removeCard(c.id) }));
+    return node;
+  }
+
+  function renderGroups() {
+    const box = $("groups"); box.innerHTML = "";
+    KINDS.forEach(kind => {
+      const items = allCards().filter(c => c.kind === kind);
+      if (items.length === 0) return;
+      const grid = NE.el("div", { class: "grid three" }, items.map(cardNode));
+      box.appendChild(NE.el("div", { class: "kind-group" }, [NE.el("h3", {}, [kindBadge(kind), " " + kind + " 제약 · " + items.length + "장"]), grid]));
+    });
+  }
+
+  function removeCard(id) {
+    if (!confirm("이 카드를 지울까요?")) return;
+    custom = custom.filter(c => c.id !== id);
+    NE.save(KEY, custom);
+    renderGroups();
+  }
+
+  // 무작위 뽑기: 앞면(?)으로 돌아간 뒤 내용을 바꾸고 다시 뒤집는다
+  function draw() {
+    const cards = allCards();
+    const pick = cards[Math.floor(Math.random() * cards.length)];
+    const flip = $("flip"), back = $("flipBack");
+    flip.classList.remove("flipped");
+    setTimeout(() => {
+      back.innerHTML = "";
+      back.appendChild(kindBadge(pick.kind));
+      back.appendChild(NE.el("div", { text: pick.text, style: "margin:4px 0" }));
+      const ev = NE.el("div", {}); pick.evidence.forEach(id => ev.appendChild(NE.evidenceBadge(id)));
+      back.appendChild(ev);
+      void flip.offsetWidth;
+      flip.classList.add("flipped");
+    }, 380);
+  }
+
+  function cardsAsText() {
+    return [S.title + " — 제약 카드"].concat(KINDS.flatMap(kind =>
+      allCards().filter(c => c.kind === kind).map(c => "[" + kind + "] " + c.text + " (근거: " + c.evidence.map(id => "문장 " + id).join(", ") + ")")
+    )).join("\n");
+  }
+
+  function copyAll() {
+    const text = cardsAsText(), msg = $("copyMsg");
+    const done = ok => { msg.className = "msg" + (ok ? " ok" : ""); msg.textContent = ok ? "카드 " + allCards().length + "장을 복사했어요. 학습지에 붙여 넣으세요." : "복사에 실패했어요. 브라우저 설정을 확인해 주세요."; };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(() => done(true), () => done(false)); return; }
+    const ta = NE.el("textarea", { style: "position:fixed;opacity:0" }); ta.value = text; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    ta.remove(); done(ok);
+  }
+
+  // 근거 고르기
+  function renderPicker() {
+    const box = $("picker"); box.innerHTML = "";
+    const q = $("evq").value.trim();
+    const hits = q ? S.search(q).slice(0, MAX_HITS) : [];
+    if (!q) { box.appendChild(NE.el("div", { class: "hit muted", text: "낱말을 넣으면 문장이 나타나요." })); return; }
+    if (hits.length === 0) { box.appendChild(NE.el("div", { class: "hit muted", text: "맞는 문장이 없어요. 다른 낱말로 찾아보세요." })); return; }
+    hits.forEach(s => box.appendChild(NE.el("div", {
+      class: "hit" + (chosen.includes(s.id) ? " on" : ""), text: "문장 " + s.id + " · " + s.text,
+      onclick: () => toggleEvidence(s.id)
+    })));
+  }
+  function toggleEvidence(id) {
+    chosen = chosen.includes(id) ? chosen.filter(x => x !== id) : chosen.concat([id]).sort((a, b) => a - b);
+    renderChosen(); renderPicker(); updateSaveState();
+  }
+  function renderChosen() {
+    const box = $("chosen"); box.innerHTML = "";
+    if (chosen.length === 0) { box.appendChild(NE.el("span", { class: "muted", text: "아직 고른 근거가 없어요.", style: "font-size:0.85rem" })); return; }
+    chosen.forEach(id => box.appendChild(NE.el("span", { class: "evidence", text: "문장 " + id, title: "빼기", onclick: () => toggleEvidence(id) })));
+  }
+
+  function validate() {
+    const text = $("ctext").value.trim();
+    if (!text) return "제약 내용을 적어 주세요.";
+    if (text.length > MAX_TEXT) return "제약 내용은 " + MAX_TEXT + "자 이내로 적어 주세요.";
+    if (chosen.length === 0) return "근거 문장을 1개 이상 골라 주세요.";
+    return "";
+  }
+  function updateSaveState() {
+    const why = validate();
+    $("saveBtn").disabled = Boolean(why);
+    $("saveWhy").textContent = why;
+  }
+
+  function saveCard() {
+    const why = validate(), msg = $("saveMsg");
+    if (why) { msg.className = "msg"; msg.textContent = why; return; }
+    const card = { id: NE.uid(), kind: $("kindSel").value, text: $("ctext").value.trim(), evidence: chosen.slice(), custom: true };
+    if (!KINDS.includes(card.kind)) { msg.className = "msg"; msg.textContent = "종류를 골라 주세요."; return; }
+    custom = custom.concat([card]);
+    if (!NE.save(KEY, custom)) { msg.className = "msg"; msg.textContent = "저장에 실패했어요. 브라우저 저장 공간을 확인해 주세요."; return; }
+    msg.className = "msg ok"; msg.textContent = "카드를 저장했어요. 위 목록에서 볼 수 있어요.";
+    $("ctext").value = ""; $("evq").value = ""; chosen = [];
+    renderChosen(); renderPicker(); updateSaveState(); renderGroups();
+  }
+
+  KINDS.forEach(k => $("kindSel").appendChild(NE.el("option", { value: k, text: k })));
+  $("drawBtn").addEventListener("click", draw);
+  $("copyBtn").addEventListener("click", copyAll);
+  $("saveBtn").addEventListener("click", saveCard);
+  $("ctext").addEventListener("input", updateSaveState);
+  $("evq").addEventListener("input", renderPicker);
+
+  renderGroups(); renderPicker(); renderChosen(); updateSaveState();
+})();
+</script>
+</body>
+</html>

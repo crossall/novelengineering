@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>인물 관계도·사건 타임라인 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .tabs button { background: #fff; color: var(--muted); border-color: var(--line); }
+  .tabs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tab[hidden] { display: none; }
+  .picker { border: 1px solid var(--line); border-radius: 8px; max-height: 160px; overflow-y: auto; margin-top: 6px; background: #fff; }
+  .picker .hit { padding: 6px 10px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: 0.9rem; }
+  .picker .hit:hover { background: var(--accent-soft); }
+  .picker .hit.on { background: #e3f3e8; }
+  .chosen { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; min-height: 24px; }
+  .chosen .evidence::after { content: " ×"; }
+  .msg { font-size: 0.85rem; min-height: 1.2em; margin-top: 6px; color: var(--bad); }
+  .msg.ok { color: var(--ok); }
+  svg.graph { width: 100%; height: auto; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
+  svg.graph .edge { stroke: var(--stick); stroke-width: 2.5; cursor: pointer; }
+  svg.graph .edge:hover, svg.graph .edge.on { stroke: var(--accent); stroke-width: 4; }
+  svg.graph .elabel { font-size: 12px; fill: var(--ink); paint-order: stroke; stroke: #fff; stroke-width: 4px; cursor: pointer; text-anchor: middle; }
+  svg.graph .node circle { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  svg.graph .node text { font-size: 12px; text-anchor: middle; fill: var(--ink); font-weight: 600; }
+  .rel-list { list-style: none; padding: 0; margin: 0; }
+  .rel-list li { border-bottom: 1px solid var(--line); padding: 6px 0; font-size: 0.9rem; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .rel-list .del { font-size: 0.78rem; padding: 2px 8px; margin-left: auto; }
+  .events { list-style: none; padding: 0; margin: 0; counter-reset: ev; }
+  .events li { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; margin-bottom: 6px; }
+  .events li::before { counter-increment: ev; content: counter(ev); font-weight: 700; color: var(--muted); width: 22px; }
+  .events li .t { flex: 1; }
+  .events li.wrong { border-color: var(--bad); background: #fff7f6; }
+  .events li.right { border-color: var(--ok); }
+  .events button { padding: 2px 8px; font-size: 0.8rem; }
+  .score { font-size: 1.4rem; font-weight: 700; }
+</style>
+</head>
+<body data-stage="1단계 책 읽기" data-who="학생" data-title="인물 관계도·사건 타임라인">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 상황 모형(수렴) → 관점 취하기</div>
+    <p>이야기 속 인물들은 서로 어떤 사이일까요? 사건은 어떤 차례로 일어났을까요? 관계를 그릴 때는 <b>근거 문장</b>을 꼭 붙여요. 사건 순서는 책의 문장 번호로 확인합니다. 내 생각이 아니라 <b>책에 얼마나 충실한가</b>가 기준이에요.</p>
+  </div>
+
+  <div class="tabs"><button type="button" id="tabA" class="on">관계도</button><button type="button" id="tabB">타임라인</button></div>
+
+  <section class="tab" id="paneA">
+    <div class="grid two">
+      <div class="card">
+        <h3>관계 추가하기</h3>
+        <div class="row">
+          <div class="field" style="flex:1"><label for="selA">인물 A</label><select id="selA"></select></div>
+          <div class="field" style="flex:1"><label for="selB">인물 B</label><select id="selB"></select></div>
+        </div>
+        <div class="field"><label for="relLabel">어떤 사이인가요?</label><input type="text" id="relLabel" maxlength="20" placeholder="예) 잡아먹으려 한다, 도와준다, 놀린다"></div>
+        <div class="field">
+          <label for="relq">근거 문장 찾기(1개 이상 필수)</label>
+          <input type="text" id="relq" placeholder="낱말로 찾기. 예) 늑대, 형들, 도망" autocomplete="off">
+          <div class="picker" id="relPicker"></div>
+          <div class="chosen" id="relChosen"></div>
+        </div>
+        <div class="row"><button type="button" id="relSave">관계 저장</button></div>
+        <div class="msg" id="relMsg"></div>
+      </div>
+      <div class="card">
+        <h3>관계도</h3>
+        <svg class="graph" id="graph" viewBox="0 0 600 480" role="img" aria-label="인물 관계도"></svg>
+        <p class="muted" style="font-size:0.85rem;margin-top:6px">선이나 글자를 누르면 근거 문장이 나와요.</p>
+        <div id="edgeInfo"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px"><h3>내가 만든 관계</h3><ul class="rel-list" id="relList"></ul></div>
+  </section>
+
+  <section class="tab" id="paneB" hidden>
+    <div class="grid two">
+      <div class="card">
+        <h3>사건 순서 맞추기</h3>
+        <p class="muted" style="font-size:0.85rem">▲▼ 버튼으로 사건을 책의 차례대로 놓아 보세요.</p>
+        <ol class="events" id="events"></ol>
+        <div class="row"><button type="button" id="checkBtn">텍스트 충실도 확인</button><button type="button" class="ghost" id="shuffleBtn">다시 섞기</button></div>
+      </div>
+      <div class="card">
+        <h3>확인 결과</h3>
+        <div id="result"><p class="muted">아직 확인하지 않았어요.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 관계도 탭에서 모둠별로 관계를 3개 이상 만들게 하되, 근거 문장이 없으면 저장이 안 된다는 점을 먼저 보여 줍니다. 타임라인 탭은 개인 활동으로, 섞인 12개 사건을 순서대로 놓고 "텍스트 충실도 확인"을 눌러 스스로 고치게 합니다.
+    관찰 포인트: <b>텍스트 충실도가 곧 평가 기준</b>입니다. 관계 이름표에 "착하다"처럼 책에 없는 평가가 들어가는지, 근거 문장이 그 관계를 실제로 보여 주는지 보세요. 타임라인에서는 셋째와 늑대의 순무밭·사과나무·장터 순서(문장 32→35→38)를 헷갈리는 학생이 많습니다.
+    <br><b>명세.</b> 기능: (A) 인물 두 명 + 관계 이름표 + 근거 문장으로 관계를 만들고 원형 SVG 관계도로 그린다, 선을 누르면 근거가 뜬다. (B) 문장 번호가 붙은 사건 12개를 섞어 보여 주고 ▲▼로 순서를 바꾼 뒤 이웃한 쌍의 순서 정확도를 %로 알려 준다. 입력: 인물 A·B(서로 달라야 함), 관계 이름표(1~20자), 근거 문장 1개 이상, 사건 순서. 출력: SVG 관계도와 관계 목록, 정확도 %와 자리가 틀린 사건(근거 배지). 성공 조건: 근거 없는 관계는 저장되지 않는다, 순서 판정은 문장 id만으로 이루어진다, 저장 내용이 새로고침 후에도 남는다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const S = window.STORY, NE = window.NE;
+  const REL_KEY = "ne.reading.relations", ORDER_KEY = "ne.reading.timeline.order";
+  const MAX_LABEL = 20, MAX_HITS = 12;
+  const EVENTS = [
+    { id: 3, text: "엄마가 세 아들을 떠나보냄" }, { id: 8, text: "첫째가 짚집을 지음" },
+    { id: 11, text: "둘째가 나뭇가지집을 지음" }, { id: 14, text: "셋째가 벽돌집을 지음" },
+    { id: 20, text: "짚집이 날아감" }, { id: 25, text: "나뭇가지집이 무너짐" },
+    { id: 29, text: "벽돌집이 버팀" }, { id: 32, text: "셋째가 순무밭에 먼저 다녀옴" },
+    { id: 35, text: "셋째가 사과나무에 올라감" }, { id: 38, text: "장터에서 산 버터통을 타고 구름" },
+    { id: 42, text: "늑대가 굴뚝으로 내려와 솥에 빠짐" }, { id: 43, text: "삼형제가 벽돌집에서 행복하게 삶" }
+  ];
+  const $ = id => document.getElementById(id);
+  const charName = id => { const c = S.characters.find(x => x.id === id); return c ? c.name : id; };
+
+  let relations = NE.load(REL_KEY, []).filter(r => r && r.a && r.b && r.label && Array.isArray(r.evidence) && r.evidence.length > 0);
+  let chosen = [], activeEdge = null;
+
+  // ---------- 탭 ----------
+  function showTab(which) {
+    $("paneA").hidden = which !== "A"; $("paneB").hidden = which !== "B";
+    $("tabA").classList.toggle("on", which === "A"); $("tabB").classList.toggle("on", which === "B");
+  }
+  $("tabA").addEventListener("click", () => showTab("A"));
+  $("tabB").addEventListener("click", () => showTab("B"));
+
+  // ---------- 관계도: 입력 ----------
+  function fillSelects() {
+    ["selA", "selB"].forEach((sid, i) => {
+      const sel = $(sid); sel.innerHTML = "";
+      S.characters.forEach(c => sel.appendChild(NE.el("option", { value: c.id, text: c.name })));
+      sel.selectedIndex = i === 0 ? 3 : 4;   // 셋째 돼지 / 늑대 를 기본으로
+    });
+  }
+  function renderPicker() {
+    const box = $("relPicker"); box.innerHTML = "";
+    const q = $("relq").value.trim();
+    if (!q) { box.appendChild(NE.el("div", { class: "hit muted", text: "낱말을 넣으면 문장이 나타나요." })); return; }
+    const hits = S.search(q).slice(0, MAX_HITS);
+    if (hits.length === 0) { box.appendChild(NE.el("div", { class: "hit muted", text: "맞는 문장이 없어요. 다른 낱말로 찾아보세요." })); return; }
+    hits.forEach(s => box.appendChild(NE.el("div", { class: "hit" + (chosen.includes(s.id) ? " on" : ""), text: "문장 " + s.id + " · " + s.text, onclick: () => toggleEvidence(s.id) })));
+  }
+  function toggleEvidence(id) {
+    chosen = chosen.includes(id) ? chosen.filter(x => x !== id) : chosen.concat([id]).sort((a, b) => a - b);
+    renderChosen(); renderPicker();
+  }
+  function renderChosen() {
+    const box = $("relChosen"); box.innerHTML = "";
+    if (chosen.length === 0) { box.appendChild(NE.el("span", { class: "muted", text: "아직 고른 근거가 없어요.", style: "font-size:0.85rem" })); return; }
+    chosen.forEach(id => box.appendChild(NE.el("span", { class: "evidence", text: "문장 " + id, title: "빼기", onclick: () => toggleEvidence(id) })));
+  }
+  function validateRelation(a, b, label) {
+    if (a === b) return "인물 A와 B는 서로 달라야 해요.";
+    if (!label) return "어떤 사이인지 적어 주세요.";
+    if (label.length > MAX_LABEL) return "관계는 " + MAX_LABEL + "자 이내로 적어 주세요.";
+    if (chosen.length === 0) return "근거 문장을 1개 이상 골라 주세요. 근거 없는 관계는 저장되지 않아요.";
+    return "";
+  }
+  function saveRelation() {
+    const a = $("selA").value, b = $("selB").value, label = $("relLabel").value.trim(), msg = $("relMsg");
+    const why = validateRelation(a, b, label);
+    if (why) { msg.className = "msg"; msg.textContent = why; return; }
+    relations = relations.concat([{ id: NE.uid(), a, b, label, evidence: chosen.slice() }]);
+    if (!NE.save(REL_KEY, relations)) { msg.className = "msg"; msg.textContent = "저장에 실패했어요. 브라우저 저장 공간을 확인해 주세요."; return; }
+    msg.className = "msg ok"; msg.textContent = "관계를 저장했어요.";
+    $("relLabel").value = ""; $("relq").value = ""; chosen = [];
+    renderChosen(); renderPicker(); renderGraph(); renderRelList();
+  }
+  function removeRelation(id) {
+    if (!confirm("이 관계를 지울까요?")) return;
+    relations = relations.filter(r => r.id !== id);
+    NE.save(REL_KEY, relations);
+    if (activeEdge === id) { activeEdge = null; $("edgeInfo").innerHTML = ""; }
+    renderGraph(); renderRelList();
+  }
+
+  // ---------- 관계도: SVG ----------
+  const svgEl = (tag, attrs, children) => {
+    const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => { if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v); });
+    (children || []).forEach(c => n.appendChild(typeof c === "string" ? document.createTextNode(c) : c));
+    return n;
+  };
+  function nodePositions() {
+    const cx = 300, cy = 240, r = 180, n = S.characters.length;
+    return S.characters.reduce((acc, c, i) => {
+      const ang = -Math.PI / 2 + (2 * Math.PI * i) / n;
+      return Object.assign({}, acc, { [c.id]: { x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang) } });
+    }, {});
+  }
+  function pairIndex(rel, i) {   // 같은 두 인물 사이 여러 관계는 이름표를 비켜 놓는다
+    const key = [rel.a, rel.b].sort().join("|");
+    return relations.slice(0, i).filter(r => [r.a, r.b].sort().join("|") === key).length;
+  }
+  function renderGraph() {
+    const svg = $("graph"); svg.innerHTML = "";
+    const pos = nodePositions();
+    relations.forEach((rel, i) => {
+      const p = pos[rel.a], q = pos[rel.b]; if (!p || !q) return;
+      const off = pairIndex(rel, i) * 16;
+      const dx = q.x - p.x, dy = q.y - p.y, len = Math.hypot(dx, dy) || 1;
+      const mx = (p.x + q.x) / 2 - (dy / len) * off, my = (p.y + q.y) / 2 + (dx / len) * off;
+      const on = rel.id === activeEdge ? " on" : "";
+      const click = () => selectEdge(rel.id);
+      svg.appendChild(svgEl("line", { class: "edge" + on, x1: p.x, y1: p.y, x2: q.x, y2: q.y, onclick: click }));
+      svg.appendChild(svgEl("text", { class: "elabel", x: mx, y: my + 4, onclick: click }, [rel.label]));
+    });
+    S.characters.forEach(c => {
+      const p = pos[c.id];
+      svg.appendChild(svgEl("g", { class: "node" }, [
+        svgEl("circle", { cx: p.x, cy: p.y, r: 30 }),
+        svgEl("text", { x: p.x, y: p.y + 4 }, [c.name])
+      ]));
+    });
+  }
+  function selectEdge(id) {
+    activeEdge = id; renderGraph();
+    const rel = relations.find(r => r.id === id), box = $("edgeInfo"); box.innerHTML = "";
+    if (!rel) return;
+    box.appendChild(NE.el("div", { text: charName(rel.a) + " — " + rel.label + " — " + charName(rel.b), style: "font-weight:600;margin-top:6px" }));
+    rel.evidence.forEach(eid => { const s = S.byId(eid); box.appendChild(NE.el("div", { class: "quote" }, [NE.evidenceBadge(eid), s ? s.text : ""])); });
+  }
+  function renderRelList() {
+    const ul = $("relList"); ul.innerHTML = "";
+    if (relations.length === 0) { ul.appendChild(NE.el("li", { class: "muted", text: "아직 만든 관계가 없어요." })); return; }
+    relations.forEach(rel => {
+      const li = NE.el("li", {}, [NE.el("span", { text: charName(rel.a) + " → " + charName(rel.b) + " : " + rel.label })]);
+      rel.evidence.forEach(eid => li.appendChild(NE.evidenceBadge(eid)));
+      li.appendChild(NE.el("button", { type: "button", class: "ghost del", text: "삭제", onclick: () => removeRelation(rel.id) }));
+      ul.appendChild(li);
+    });
+  }
+
+  // ---------- 타임라인 ----------
+  const shuffled = arr => arr.map(v => ({ v, k: Math.random() })).sort((a, b) => a.k - b.k).map(x => x.v);
+  function validOrder(ids) {
+    const all = EVENTS.map(e => e.id);
+    return Array.isArray(ids) && ids.length === all.length && all.every(id => ids.includes(id));
+  }
+  let order = (() => { const saved = NE.load(ORDER_KEY, null); return validOrder(saved) ? saved : shuffled(EVENTS.map(e => e.id)); })();
+  let verdict = null;   // { wrongIds: [] } 확인 후 표시용
+
+  function setOrder(next) { order = next; verdict = null; NE.save(ORDER_KEY, order); renderEvents(); }
+  function move(idx, dir) {
+    const j = idx + dir; if (j < 0 || j >= order.length) return;
+    const next = order.slice(); next[idx] = order[j]; next[j] = order[idx];
+    setOrder(next);
+  }
+  function renderEvents() {
+    const ol = $("events"); ol.innerHTML = "";
+    order.forEach((id, i) => {
+      const ev = EVENTS.find(e => e.id === id);
+      const cls = !verdict ? "" : (verdict.wrongIds.includes(id) ? "wrong" : "right");
+      ol.appendChild(NE.el("li", { class: cls }, [
+        NE.el("span", { class: "t", text: ev.text }), NE.evidenceBadge(id),
+        NE.el("button", { type: "button", class: "ghost", text: "▲", title: "위로", onclick: () => move(i, -1) }),
+        NE.el("button", { type: "button", class: "ghost", text: "▼", title: "아래로", onclick: () => move(i, 1) })
+      ]));
+    });
+  }
+  function check() {
+    const pairs = order.length - 1;
+    const correct = order.slice(1).filter((id, i) => order[i] < id).length;
+    const pct = Math.round((correct / pairs) * 100);
+    const sorted = order.slice().sort((a, b) => a - b);
+    const wrongIds = order.filter((id, i) => sorted[i] !== id);
+    verdict = { wrongIds }; renderEvents();
+    const box = $("result"); box.innerHTML = "";
+    const cls = pct === 100 ? "ok" : pct >= 70 ? "warn" : "bad";
+    box.appendChild(NE.el("div", { class: "score", text: "텍스트 충실도 " + pct + "%" }));
+    box.appendChild(NE.el("p", {}, [NE.el("span", { class: "badge " + cls, text: "이웃한 " + pairs + "쌍 중 " + correct + "쌍이 책의 순서와 같아요" })]));
+    if (wrongIds.length === 0) { box.appendChild(NE.el("p", { text: "모든 사건이 책의 차례와 같아요. 잘했어요!" })); return; }
+    box.appendChild(NE.el("p", { text: "자리가 틀린 사건 " + wrongIds.length + "개. 배지를 눌러 문장을 읽고 다시 놓아 보세요." }));
+    wrongIds.forEach(id => { const ev = EVENTS.find(e => e.id === id); box.appendChild(NE.el("div", { class: "quote" }, [NE.evidenceBadge(id), ev.text])); });
+  }
+
+  $("relSave").addEventListener("click", saveRelation);
+  $("relq").addEventListener("input", renderPicker);
+  $("checkBtn").addEventListener("click", check);
+  $("shuffleBtn").addEventListener("click", () => { $("result").innerHTML = "<p class=\"muted\">아직 확인하지 않았어요.</p>"; setOrder(shuffled(order)); });
+
+  fillSelects(); renderPicker(); renderChosen(); renderGraph(); renderRelList(); renderEvents();
+})();
+</script>
+</body>
+</html>
