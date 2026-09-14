@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>프롬프트 버전 일기 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.msg { font-size: 0.9rem; margin-top: 6px; min-height: 1.2em; }
+.msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
+.timeline { position: relative; padding-left: 26px; margin-top: 8px; }
+.timeline::before { content: ""; position: absolute; left: 9px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+.ver { position: relative; margin-bottom: 14px; }
+.ver::before { content: ""; position: absolute; left: -23px; top: 18px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; }
+.ver .head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.ver .vn { font-weight: 700; color: var(--accent); font-size: 1.05rem; }
+.prompt { background: #fffdf7; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; font-size: 0.95rem; }
+.kv { font-size: 0.92rem; margin-top: 6px; } .kv b { color: var(--muted); font-weight: 600; margin-right: 4px; }
+.diff { position: relative; margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: #f6f2ea; font-size: 0.92rem; line-height: 1.9; }
+.diff .lbl { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 2px; }
+.diff .add { background: #d4f0dc; color: #1f6b3a; border-radius: 4px; padding: 0 3px; }
+.diff .del { background: #f9d6d2; color: #9c2f22; text-decoration: line-through; border-radius: 4px; padding: 0 3px; }
+.bars .bar { display: grid; grid-template-columns: 150px 1fr 30px; gap: 8px; align-items: center; font-size: 0.9rem; margin-bottom: 6px; }
+.bars .track { background: #f1ecdf; border-radius: 6px; height: 14px; overflow: hidden; }
+.bars .fill { background: var(--straw); height: 100%; }
+.stat { display: inline-block; margin-right: 16px; } .stat b { font-size: 1.3rem; color: var(--accent); }
+.reflect textarea { min-height: 60px; }
+#exportBox { white-space: pre-wrap; font-size: 0.85rem; max-height: 260px; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+</style>
+</head>
+<body data-stage="5단계 피드백·개선" data-who="학생" data-title="프롬프트 버전 일기">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 귀납(바꾼 이유들 → 내 습관) → 성찰적 의사결정</div>
+    <p>AI에게 보낸 프롬프트를 v1, v2, v3… 버전으로 남깁니다. 무엇이 나왔는지, 검증에서 통과했는지, 왜 바꿨는지 적어요.</p>
+    <p>버전 사이의 달라진 낱말이 색으로 보입니다. 마지막에는 "다음엔 처음부터 어떻게 쓸까?"를 스스로 정합니다.</p>
+  </div>
+
+  <div class="toolbar">
+    <button class="secondary" id="seedBtn">예시 불러오기</button>
+    <button class="ghost" id="undoBtn">마지막 버전 지우기</button>
+    <button class="ghost" id="clearBtn">모두 지우기</button>
+  </div>
+
+  <div class="card">
+    <div class="field"><label for="project">프로젝트 이름</label><input type="text" id="project" placeholder="예: 늑대 경보 종"></div>
+    <h3 id="formTitle">새 버전 적기</h3>
+    <div class="field"><label>보낸 프롬프트 <button class="ghost" id="copyPrevBtn" type="button" style="padding:2px 8px;font-size:0.8rem">이전 버전 복사</button></label><textarea id="fPrompt" placeholder="AI에게 보낸 말을 그대로 붙여 넣어요."></textarea></div>
+    <div class="grid two">
+      <div class="field"><label>무엇이 나왔나요? (짧게)</label><input type="text" id="fOutput" placeholder="예: 발판을 밟으면 종이 울리는 장치"></div>
+      <div class="field"><label>검증 결과</label><div class="row"><select id="fResult"><option value="pass">통과</option><option value="fail">실패</option></select><input type="text" id="fCard" placeholder="어떤 검증 카드? 예: 카드 2 형이 와도 안 울린다"></div></div>
+      <div class="field"><label>무엇을 바꿨나요?</label><input type="text" id="fChanged" placeholder="v1이면 비워 두어도 돼요."></div>
+      <div class="field"><label>왜 바꿨나요?</label><select id="fReason"></select></div>
+    </div>
+    <div class="field"><label>이유를 조금 더 (기타를 골랐다면 꼭)</label><textarea id="fReasonNote" placeholder="예: 형이 왔는데도 종이 울려서 헛경보였어요. 문장 21"></textarea></div>
+    <button id="addBtn">버전 저장</button><div class="msg" id="formMsg"></div>
+  </div>
+
+  <h2 style="margin-top:22px">버전 타임라인</h2>
+  <div id="timeline"></div>
+
+  <div class="grid two" style="margin-top:16px">
+    <div class="card"><h3>바꾼 이유 통계</h3><div id="stats"></div></div>
+    <div class="card reflect"><h3>돌아보기</h3><div id="reflect"></div></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="row"><h3 style="margin:0">글로 내보내기</h3><button class="secondary" id="exportBtn">텍스트 만들기</button><a id="dlLink" class="btn secondary" style="display:none" download="prompt-history.txt">텍스트 파일 내려받기</a></div>
+    <div id="exportBox" style="margin-top:10px;display:none"></div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    <b>수업 사용법.</b> 학생은 4단계에서 AI와 주고받은 프롬프트를 버전마다 붙여 넣고, 검증 카드 결과와 바꾼 이유를 고릅니다. 피드백을 받은 뒤 v3, v4를 이어 적고, 마지막에 돌아보기 세 질문에 답합니다. 발표 때는 diff 화면을 띄워 "낱말 몇 개가 결과를 바꿨다"를 보여 주게 합니다.
+    <b>관찰 포인트.</b> 이유 통계에서 "검증에 실패해서"가 많으면 검증 카드가 잘 작동하는 것이고, "명세가 모호해서"가 많으면 2·3단계로 돌아가야 한다는 신호입니다. 돌아보기 3번(첫 프롬프트를 다시 쓴다면)에서 학생이 v1의 빠진 조건(누가·언제·무엇을 제외)을 스스로 채우는지 봅니다. 이것이 성찰적 의사결정입니다.
+    <b>이 앱의 명세.</b> 기능: 프로젝트 이름, 버전 추가(번호 자동), 타임라인, 인접 버전 간 낱말 diff(LCS, 공백 기준), 이유별 통계 막대, 반복 횟수, 돌아보기 3문항, 텍스트 내보내기, 예시 불러오기. 입력: 프롬프트(5자 이상)·나온 결과·검증 결과(통과/실패)와 카드 이름·바꾼 것·이유(선택지 5개 + 메모). 출력: 버전 카드, 초록(추가)/빨강(삭제) diff, 통계, 내보내기 텍스트. 성공 조건: v2부터는 바꾼 것과 이유가 없으면 저장되지 않는다. "기타"를 고르면 메모가 필수다. 마지막 버전만 지울 수 있어 번호가 어긋나지 않는다. 모든 데이터는 localStorage에 남는다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const { el, evidenceBadge, load, save, uid } = window.NE;
+  const KEY = "ne5-prompt-history";
+  const MIN_PROMPT = 5;
+  const REASONS = ["검증에 실패해서", "새 아이디어가 생겨서", "친구 피드백 때문에", "명세가 모호해서", "기타"];
+  const FIRST_REASON = "처음 작성";
+  const QUESTIONS = [
+    { id: "q1", text: "가장 큰 변화는 몇 번째였나요? 왜 그렇게 생각하나요?" },
+    { id: "q2", text: "AI가 내 말을 다르게 이해한 적은 언제였나요?" },
+    { id: "q3", text: "다음에 처음부터 다시 쓴다면 첫 프롬프트를 어떻게 쓸까요?" }
+  ];
+  const EMPTY = { project: "", versions: [], reflections: {} };
+  const $ = id => document.getElementById(id);
+
+  let state = load(KEY, EMPTY);
+  function setState(next) { state = next; if (!save(KEY, next)) alert("저장에 실패했어요. 브라우저 저장 공간을 확인해 주세요."); render(); }
+
+  function richText(text) {
+    const parts = String(text || "").split(/문장 (\d+)/);
+    return parts.map((p, i) => (i % 2 === 1 ? evidenceBadge(Number(p)) : p)).filter(p => p !== "");
+  }
+
+  // ---------- 낱말 diff (LCS) ----------
+  function tokenize(s) { return String(s || "").trim().split(/\s+/).filter(Boolean); }
+  function lcsTable(a, b) {
+    const t = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+    for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--)
+      t[i][j] = a[i] === b[j] ? t[i + 1][j + 1] + 1 : Math.max(t[i + 1][j], t[i][j + 1]);
+    return t;
+  }
+  function diffTokens(a, b) {
+    const t = lcsTable(a, b);
+    const out = []; let i = 0, j = 0;
+    while (i < a.length && j < b.length) {
+      if (a[i] === b[j]) { out.push({ type: "same", text: a[i] }); i++; j++; }
+      else if (t[i + 1][j] >= t[i][j + 1]) { out.push({ type: "del", text: a[i] }); i++; }
+      else { out.push({ type: "add", text: b[j] }); j++; }
+    }
+    return [...out, ...a.slice(i).map(text => ({ type: "del", text })), ...b.slice(j).map(text => ({ type: "add", text }))];
+  }
+  function diffSummary(prev, cur) {
+    const d = diffTokens(tokenize(prev.prompt), tokenize(cur.prompt));
+    return { d, added: d.filter(x => x.type === "add").length, removed: d.filter(x => x.type === "del").length };
+  }
+  function diffBlock(prev, cur) {
+    const { d, added, removed } = diffSummary(prev, cur);
+    const nodes = d.map(x => x.type === "same" ? x.text + " " : el("span", { class: x.type, text: x.text + " " }));
+    return el("div", { class: "diff" }, [
+      el("span", { class: "lbl", text: "v" + prev.n + " → v" + cur.n + " 달라진 낱말 · 추가 " + added + " · 삭제 " + removed }), ...nodes
+    ]);
+  }
+
+  // ---------- 폼 ----------
+  function nextN() { return state.versions.length + 1; }
+  function fillReasons() {
+    const sel = $("fReason");
+    sel.innerHTML = "";
+    const opts = nextN() === 1 ? [FIRST_REASON] : REASONS;
+    opts.forEach(r => sel.appendChild(el("option", { value: r, text: r })));
+  }
+  function readForm() {
+    return {
+      prompt: $("fPrompt").value.trim(), output: $("fOutput").value.trim(), result: $("fResult").value, card: $("fCard").value.trim(),
+      changed: $("fChanged").value.trim(), reason: $("fReason").value, reasonNote: $("fReasonNote").value.trim()
+    };
+  }
+  function validateVersion(f, n) {
+    if (f.prompt.length < MIN_PROMPT) return { ok: false, message: "프롬프트를 " + MIN_PROMPT + "자 이상 붙여 넣어 주세요." };
+    if (!f.output) return { ok: false, message: "무엇이 나왔는지 짧게 적어 주세요." };
+    if (!f.card) return { ok: false, message: "어떤 검증 카드로 확인했는지 적어 주세요." };
+    if (n > 1 && !f.changed) return { ok: false, message: "v" + n + "에서는 무엇을 바꿨는지 적어 주세요." };
+    if (n > 1 && !REASONS.includes(f.reason)) return { ok: false, message: "왜 바꿨는지 골라 주세요." };
+    if (f.reason === "기타" && !f.reasonNote) return { ok: false, message: "'기타'를 골랐다면 이유를 적어 주세요." };
+    return { ok: true, message: "v" + n + "을 저장했어요.", version: { id: uid(), n, ...f, reason: n === 1 ? FIRST_REASON : f.reason, ts: Date.now() } };
+  }
+  function showMsg(r) { const m = $("formMsg"); m.className = "msg " + (r.ok ? "ok" : "bad"); m.textContent = r.message; }
+  function clearForm() { ["fPrompt", "fOutput", "fCard", "fChanged", "fReasonNote"].forEach(id => { $(id).value = ""; }); }
+  function addVersion() {
+    const r = validateVersion(readForm(), nextN());
+    showMsg(r);
+    if (!r.ok) return;
+    clearForm();
+    setState({ ...state, versions: [...state.versions, r.version] });
+  }
+  function copyPrev() {
+    const last = state.versions[state.versions.length - 1];
+    if (!last) { showMsg({ ok: false, message: "아직 복사할 이전 버전이 없어요." }); return; }
+    $("fPrompt").value = last.prompt; $("fPrompt").focus();
+    showMsg({ ok: true, message: "v" + last.n + " 프롬프트를 복사했어요. 바꿀 부분만 고쳐 보세요." });
+  }
+
+  // ---------- 타임라인 ----------
+  function resultBadge(v) { return el("span", { class: "badge " + (v.result === "pass" ? "ok" : "bad"), text: v.result === "pass" ? "통과" : "실패" }); }
+  function kv(label, nodes) { return el("div", { class: "kv" }, [el("b", { text: label }), ...nodes]); }
+  function versionCard(v) {
+    return el("div", { class: "ver card" }, [
+      el("div", { class: "head" }, [el("span", { class: "vn", text: "v" + v.n }), resultBadge(v), el("span", { class: "muted", text: v.card })]),
+      el("div", { class: "prompt", text: v.prompt }),
+      kv("나온 것:", richText(v.output)),
+      ...(v.n > 1 ? [kv("바꾼 것:", richText(v.changed))] : []),
+      kv("왜:", [el("span", { class: "badge", text: v.reason }), " ", ...richText(v.reasonNote)])
+    ]);
+  }
+  function renderTimeline() {
+    const box = $("timeline");
+    box.innerHTML = "";
+    if (!state.versions.length) { box.appendChild(el("p", { class: "muted", text: "아직 버전이 없어요. 위에서 v1을 적거나 '예시 불러오기'를 눌러 보세요." })); return; }
+    const items = state.versions.flatMap((v, i) => (i === 0 ? [versionCard(v)] : [diffBlock(state.versions[i - 1], v), versionCard(v)]));
+    box.appendChild(el("div", { class: "timeline" }, items));
+  }
+
+  // ---------- 통계 ----------
+  function reasonCounts() { return REASONS.map(r => ({ reason: r, n: state.versions.filter(v => v.reason === r).length })); }
+  function renderStats() {
+    const box = $("stats");
+    box.innerHTML = "";
+    const vs = state.versions;
+    const loops = Math.max(0, vs.length - 1);
+    const passes = vs.filter(v => v.result === "pass").length;
+    box.appendChild(el("div", { style: "margin-bottom:10px" }, [
+      el("span", { class: "stat" }, [el("b", { text: String(loops) }), " 번 고쳤어요"]),
+      el("span", { class: "stat" }, [el("b", { text: passes + "/" + vs.length }), " 통과"])
+    ]));
+    const counts = reasonCounts();
+    const max = Math.max(1, ...counts.map(c => c.n));
+    box.appendChild(el("div", { class: "bars" }, counts.map(c => el("div", { class: "bar" }, [
+      el("span", { text: c.reason }),
+      el("div", { class: "track" }, [el("div", { class: "fill", style: "width:" + (c.n / max) * 100 + "%" })]),
+      el("span", { text: String(c.n) })
+    ]))));
+    const top = counts.reduce((m, c) => (c.n > m.n ? c : m), { n: 0 });
+    box.appendChild(el("p", { class: "muted", style: "margin-top:8px", text: top.n ? "내가 가장 자주 고친 이유: " + top.reason : "버전이 쌓이면 내가 자주 고치는 이유가 보여요." }));
+  }
+  function renderReflect() {
+    const box = $("reflect");
+    box.innerHTML = "";
+    QUESTIONS.forEach(q => {
+      const ta = el("textarea", { placeholder: "생각을 적어 보세요." });
+      ta.value = state.reflections[q.id] || "";
+      ta.addEventListener("change", () => { state = { ...state, reflections: { ...state.reflections, [q.id]: ta.value.trim() } }; save(KEY, state); });
+      box.appendChild(el("div", { class: "field" }, [el("label", { text: q.text }), ta]));
+    });
+  }
+
+  // ---------- 내보내기 ----------
+  function exportText() {
+    const lines = ["프로젝트: " + (state.project || "(이름 없음)"), "버전 수: " + state.versions.length + " · 고친 횟수: " + Math.max(0, state.versions.length - 1), ""];
+    const vs = state.versions.flatMap((v, i) => {
+      const head = ["[v" + v.n + "] " + (v.result === "pass" ? "통과" : "실패") + " · " + v.card, "프롬프트: " + v.prompt, "나온 것: " + v.output];
+      const tail = v.n > 1 ? ["바꾼 것: " + v.changed] : [];
+      const why = ["왜: " + v.reason + (v.reasonNote ? " — " + v.reasonNote : "")];
+      const diff = i > 0 ? (() => { const s = diffSummary(state.versions[i - 1], v); return ["달라진 낱말: 추가 " + s.added + " · 삭제 " + s.removed]; })() : [];
+      return [...head, ...tail, ...why, ...diff, ""];
+    });
+    const stats = ["[바꾼 이유 통계]", ...reasonCounts().map(c => c.reason + ": " + c.n), ""];
+    const refl = ["[돌아보기]", ...QUESTIONS.map(q => "Q. " + q.text + "\nA. " + (state.reflections[q.id] || "(아직 없음)"))];
+    return [...lines, ...vs, ...stats, ...refl].join("\n");
+  }
+  function showExport() {
+    const text = exportText();
+    $("exportBox").style.display = "block"; $("exportBox").textContent = text;
+    const a = $("dlLink"); a.href = "data:text/plain;charset=utf-8," + encodeURIComponent(text); a.style.display = "inline-block";
+  }
+
+  // ---------- 예시 ----------
+  function seedData() {
+    const base = "문 앞에 누가 오면 종이 울리는 경보 장치를 만들어 줘. 문 앞 발판을 밟으면 줄이 당겨져 종이 울려.";
+    const v2 = "문 앞에 늑대가 오면 종이 울리는 경보 장치를 만들어 줘. 문 앞 발판을 밟으면 줄이 당겨져 종이 울려. 단, 형들처럼 가벼운 돼지가 밟으면 울리지 않고, 늑대처럼 무거운 짐승이 밟을 때만 울려.";
+    const v3 = v2 + " 그리고 굴뚝 안에도 줄을 걸어서 늑대가 굴뚝으로 내려오면 종이 울리게 해 줘.";
+    const mk = (n, prompt, output, result, card, changed, reason, reasonNote) => ({ id: uid(), n, prompt, output, result, card, changed, reason, reasonNote, ts: Date.now() });
+    setState({
+      project: "늑대 경보 종",
+      versions: [
+        mk(1, base, "발판을 밟으면 무조건 종이 울리는 장치", "fail", "카드 2: 형이 와도 울리지 않는다", "", FIRST_REASON, "엄마가 늑대를 조심하라고 했으니 밤에 오는 늑대를 미리 알고 싶었어요. 문장 4 문장 16"),
+        mk(2, v2, "무거운 것이 밟을 때만 울리는 장치. 형이 와도 조용함", "pass", "카드 1: 늑대가 오면 울린다 · 카드 2: 형이 와도 울리지 않는다", "'누가' → '늑대가'로 바꾸고, 무게 조건을 넣었어요.", "검증에 실패해서", "형이 도망 왔을 때도 종이 울려서 헛경보였어요. 문장 21 문장 26"),
+        mk(3, v3, "문과 굴뚝 두 곳을 지키는 장치", "pass", "카드 3: 굴뚝으로 오면 울린다", "굴뚝 센서(줄)를 추가했어요.", "친구 피드백 때문에", "갤러리에서 '늑대는 굴뚝으로도 와요'라는 고칠 점을 받았어요. 문장 40")
+      ],
+      reflections: { q1: "v2예요. '누가'를 '늑대가'로 바꾸니 형이 와도 안 울렸어요. 낱말 하나가 결과를 바꿨어요.", q2: "v1에서 '누가 오면'이라고 하니 AI는 형도 '누가'로 봤어요.", q3: "처음부터 '늑대가(누가), 밤에(언제), 문과 굴뚝으로(어디로) 오면 울리고, 형은 빼 줘'라고 쓸 거예요." }
+    });
+  }
+
+  function render() {
+    $("project").value = state.project;
+    $("formTitle").textContent = "새 버전 적기 — v" + nextN();
+    fillReasons();
+    renderTimeline(); renderStats(); renderReflect();
+  }
+
+  $("project").addEventListener("change", () => { state = { ...state, project: $("project").value.trim() }; save(KEY, state); });
+  $("addBtn").addEventListener("click", addVersion);
+  $("copyPrevBtn").addEventListener("click", copyPrev);
+  $("exportBtn").addEventListener("click", showExport);
+  $("seedBtn").addEventListener("click", () => {
+    if (state.versions.length && !confirm("지금 적은 버전을 지우고 예시로 바꿀까요?")) return;
+    seedData();
+  });
+  $("undoBtn").addEventListener("click", () => {
+    if (!state.versions.length) { showMsg({ ok: false, message: "지울 버전이 없어요." }); return; }
+    const last = state.versions[state.versions.length - 1];
+    if (!confirm("v" + last.n + "을 지울까요?")) return;
+    setState({ ...state, versions: state.versions.slice(0, -1) });
+  });
+  $("clearBtn").addEventListener("click", () => {
+    if (!confirm("프로젝트 이름, 버전, 돌아보기를 모두 지울까요?")) return;
+    setState(EMPTY);
+  });
+  render();
+})();
+</script>
+</body>
+</html>

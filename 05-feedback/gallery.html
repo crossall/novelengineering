@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3기준 갤러리 피드백 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+.tabs { display: flex; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+.tabs button { background: transparent; color: var(--muted); border: none; border-bottom: 3px solid transparent; border-radius: 0; padding: 8px 14px; }
+.tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+.msg { font-size: 0.9rem; margin-top: 6px; min-height: 1.2em; }
+.msg.bad { color: var(--bad); } .msg.ok { color: var(--ok); }
+.work-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.work-meta { font-size: 0.9rem; color: var(--muted); }
+.crit { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: #fffdf9; }
+.crit .help { font-size: 0.85rem; color: var(--muted); margin: 2px 0 6px; }
+.stars { display: flex; gap: 6px; }
+.stars button { background: #fff; color: var(--muted); border: 1px solid var(--line); padding: 4px 10px; font-size: 0.9rem; }
+.stars button.on { background: var(--straw); border-color: var(--straw); color: #fff; }
+.prefix-row button { padding: 4px 10px; font-size: 0.85rem; }
+details.rules { font-size: 0.85rem; margin: 4px 0 8px; }
+details.rules li { margin-bottom: 2px; }
+td.low { background: var(--accent-soft); color: var(--bad); font-weight: 700; }
+.chart { max-width: 420px; }
+.filter button { padding: 4px 12px; font-size: 0.85rem; }
+.filter button.on { background: var(--accent); color: #fff; }
+.comment { padding: 6px 10px; border-left: 3px solid var(--line); margin: 4px 0; font-size: 0.95rem; }
+.comment.good { border-left-color: var(--ok); } .comment.fix { border-left-color: var(--warn); }
+.pattern { background: #fffdf7; border: 1px solid var(--straw); border-radius: 10px; padding: 10px 14px; margin: 12px 0; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.hidden { display: none; }
+</style>
+</head>
+<body data-stage="5단계 피드백·개선" data-who="교사" data-title="3기준 갤러리 피드백">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 귀납(많은 피드백 → 하나의 패턴) → 성찰적 의사결정</div>
+    <p>친구의 작품을 세 가지 기준으로 보고, 좋은 점과 고칠 점을 한 줄로 남깁니다. 이름은 적지 않아요.</p>
+    <p>선생님 화면에서는 피드백을 모아 "우리 반이 가장 자주 놓치는 기준"을 찾고, 작품 하나를 골라 함께 고쳐 봅니다.</p>
+  </div>
+
+  <div class="toolbar">
+    <button class="secondary" id="seedBtn">예시 채우기</button>
+    <button class="ghost" id="clearBtn">모두 지우기</button>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="view"></div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    <b>수업 사용법.</b> 학생은 갤러리 탭에서 작품을 등록하고, 돌아다니며 친구 작품 2~3개에 피드백을 남깁니다(이름 없음). 이후 교사 대시보드를 화면에 띄우고 "가장 많이 지적된 기준"을 함께 읽습니다. 그 기준이 가장 낮은 작품 하나를 골라 학급 앞에서 바로 고쳐 보고, 고친 뒤 다시 피드백을 받아 평균이 바뀌는 것을 확인합니다.
+    <b>관찰 포인트.</b> 대시보드는 귀납이 일어나는 자리입니다. 낱개 피드백 여러 개가 "우리 반은 ②제약을 자주 잊는다" 같은 한 문장으로 모이는지, 학생이 "고칠 점:" 뒤에 근거(문장 번호, 검증 카드)를 붙이는지, 낮은 별점을 받은 학생이 방어하지 않고 무엇을 바꿀지 결정하는지(성찰적 의사결정) 봅니다.
+    <b>이 앱의 명세.</b> 기능: 작품 등록, 3기준(①인물이 쓸 수 있나 ②제약을 지켰나 ③작동하나) 1~3점 익명 피드백, 교사 대시보드(작품별 평균·개수·가장 낮은 기준 강조, 기준별 평균 막대그래프, 댓글 목록·필터, 가장 많이 지적된 기준 자동 계산, CSV 내려받기). 입력: 작품 이름·별명·대상 인물·한 줄 설명·푸는 문제·(선택) 근거 문장 번호 / 피드백은 기준별 1~3점과 댓글 하나. 출력: 작품 카드, 통계표, SVG 그래프, CSV. 성공 조건: 댓글은 10자 이상이고 "좋은 점:" 또는 "고칠 점:"으로 시작해야 저장된다. 별점 셋을 모두 골라야 저장된다. 모든 데이터는 localStorage에만 저장되고 새로고침해도 남는다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const { el, evidenceBadge, load, save, uid } = window.NE;
+  const STORY = window.STORY;
+  const KEY = "ne5-gallery";
+  const MIN_COMMENT = 10;
+  const PREFIXES = ["좋은 점:", "고칠 점:"];
+  const SCORES = [{ n: 1, label: "★ 아직" }, { n: 2, label: "★★ 조금" }, { n: 3, label: "★★★ 잘" }];
+  const KINDS = [...new Set(STORY.constraints.map(c => c.kind))];
+  const CRITERIA = [
+    { id: "usable", label: "① 인물이 쓸 수 있나", help: "그 시대·장소에서 돼지가 실제로 쓸 수 있나요? (전기 없음, 손과 수레뿐)", evidence: [1, 12] },
+    { id: "rule", label: "② 제약을 지켰나", help: "책의 제약(" + KINDS.join("·") + ")을 어기지 않았나요?", evidence: [] },
+    { id: "works", label: "③ 작동하나", help: "검증 카드대로 움직였나요? 실패한 카드가 있으면 낮게 주세요.", evidence: [] }
+  ];
+  const TABS = [{ id: "gallery", label: "갤러리(학생 화면)" }, { id: "dash", label: "교사 대시보드" }];
+  const MAX_SENTENCE = STORY.sentences.length;
+
+  let state = load(KEY, { works: [], feedbacks: [] });
+  let ui = { tab: "gallery", filter: "all" };
+  let drafts = {};
+
+  function setState(next) { state = next; if (!save(KEY, next)) alert("저장에 실패했어요. 브라우저 저장 공간을 확인해 주세요."); render(); }
+  function setUi(patch) { ui = { ...ui, ...patch }; render(); }
+  function characterName(id) { const c = STORY.characters.find(x => x.id === id); return c ? c.name : id; }
+
+  // "문장 16" 같은 표현을 근거 배지로 바꿔 준다.
+  function richText(text) {
+    const parts = String(text || "").split(/문장 (\d+)/);
+    return parts.map((p, i) => (i % 2 === 1 ? evidenceBadge(Number(p)) : p)).filter(p => p !== "");
+  }
+
+  // ---------- 통계(귀납) ----------
+  function average(list, key) { return list.length ? list.reduce((s, f) => s + f[key], 0) / list.length : null; }
+  function statsFor(work) {
+    const fb = state.feedbacks.filter(f => f.workId === work.id);
+    const avgs = CRITERIA.map(c => ({ ...c, avg: average(fb, c.id) }));
+    const lowest = fb.length ? avgs.reduce((m, a) => (a.avg < m.avg ? a : m)) : null;
+    return { work, count: fb.length, avgs, lowest };
+  }
+  function overallAvgs() { return CRITERIA.map(c => ({ ...c, avg: average(state.feedbacks, c.id) })); }
+  function mostFlagged(rows) {
+    const rated = rows.filter(r => r.lowest);
+    if (!rated.length) return null;
+    const counts = CRITERIA.map(c => ({ ...c, n: rated.filter(r => r.lowest.id === c.id).length }));
+    const top = counts.reduce((m, c) => (c.n > m.n ? c : m));
+    const overall = overallAvgs().find(a => a.id === top.id);
+    return { ...top, total: rated.length, overallAvg: overall.avg };
+  }
+  function fmt(v) { return v === null ? "–" : v.toFixed(1); }
+
+  // ---------- 탭 ----------
+  function renderTabs() {
+    const box = document.getElementById("tabs");
+    box.innerHTML = "";
+    TABS.forEach(t => box.appendChild(el("button", { class: ui.tab === t.id ? "on" : "", text: t.label, onclick: () => setUi({ tab: t.id }) })));
+  }
+
+  // ---------- 갤러리: 작품 등록 ----------
+  function registerForm() {
+    const f = {
+      name: el("input", { type: "text", placeholder: "예: 늑대 경보 종" }),
+      author: el("input", { type: "text", placeholder: "예: 벽돌왕" }),
+      character: el("select", {}, STORY.characters.map(c => el("option", { value: c.id, text: c.name + " — " + c.role }))),
+      desc: el("input", { type: "text", placeholder: "예: 늑대가 문 앞에 오면 줄을 당겨 종이 울려요." }),
+      problem: el("input", { type: "text", placeholder: "예: 늑대가 밤에 몰래 오는 것" }),
+      evidence: el("input", { type: "number", min: "1", max: String(MAX_SENTENCE), placeholder: "예: 16" })
+    };
+    const msg = el("div", { class: "msg" });
+    const field = (label, node) => el("div", { class: "field" }, [el("label", { text: label }), node]);
+    const submit = () => {
+      const r = validateWork(f);
+      msg.className = "msg " + (r.ok ? "ok" : "bad"); msg.textContent = r.message;
+      if (!r.ok) return;
+      setState({ ...state, works: [...state.works, r.work] });
+    };
+    return el("div", { class: "card" }, [
+      el("h3", { text: "작품 등록" }),
+      el("div", { class: "grid two" }, [
+        field("작품 이름", f.name), field("만든 사람 별명", f.author),
+        field("누구를 위한 것인가요? (인물)", f.character), field("한 줄 설명", f.desc),
+        field("어떤 문제를 푸나요?", f.problem), field("근거 문장 번호 (선택, 1~" + MAX_SENTENCE + ")", f.evidence)
+      ]),
+      el("button", { text: "등록하기", onclick: submit }), msg
+    ]);
+  }
+  function validateWork(f) {
+    const v = k => f[k].value.trim();
+    if (!v("name")) return { ok: false, message: "작품 이름을 적어 주세요." };
+    if (!v("author")) return { ok: false, message: "만든 사람 별명을 적어 주세요." };
+    if (!v("desc")) return { ok: false, message: "한 줄 설명을 적어 주세요." };
+    if (!v("problem")) return { ok: false, message: "어떤 문제를 푸는지 적어 주세요." };
+    const ev = v("evidence") === "" ? null : Number(v("evidence"));
+    if (ev !== null && (!Number.isInteger(ev) || ev < 1 || ev > MAX_SENTENCE)) return { ok: false, message: "근거 문장 번호는 1~" + MAX_SENTENCE + " 사이의 정수예요." };
+    const work = { id: uid(), name: v("name"), author: v("author"), character: v("character"), desc: v("desc"), problem: v("problem"), evidence: ev };
+    return { ok: true, message: "작품을 등록했어요.", work };
+  }
+
+  // ---------- 갤러리: 작품 카드 + 피드백 ----------
+  function setDraft(workId, critId, n) { drafts = { ...drafts, [workId]: { ...(drafts[workId] || {}), [critId]: n } }; }
+  function renderStars(box, workId, critId) {
+    box.innerHTML = "";
+    const cur = (drafts[workId] || {})[critId];
+    SCORES.forEach(s => box.appendChild(el("button", {
+      class: cur === s.n ? "on" : "", text: s.label, type: "button",
+      onclick: () => { setDraft(workId, critId, s.n); renderStars(box, workId, critId); }
+    })));
+    return box;
+  }
+  function criterionBlock(work, c) {
+    const stars = renderStars(el("div", { class: "stars" }), work.id, c.id);
+    const extra = c.id === "rule" ? [constraintDetails()] : c.evidence.map(evidenceBadge);
+    return el("div", { class: "crit" }, [el("b", { text: c.label }), el("div", { class: "help" }, [c.help, " ", ...extra]), stars]);
+  }
+  function constraintDetails() {
+    return el("details", { class: "rules" }, [
+      el("summary", { text: "책의 제약 보기" }),
+      el("ul", {}, STORY.constraints.map(k => el("li", {}, [el("span", { class: "badge", text: k.kind }), " " + k.text + " ", ...k.evidence.map(evidenceBadge)])))
+    ]);
+  }
+  function validateFeedback(work, comment) {
+    const d = drafts[work.id] || {};
+    const missing = CRITERIA.filter(c => !d[c.id]);
+    if (missing.length) return { ok: false, message: missing[0].label + " 별점을 골라 주세요." };
+    const text = comment.trim();
+    if (!PREFIXES.some(p => text.startsWith(p))) return { ok: false, message: "댓글은 \"좋은 점:\" 또는 \"고칠 점:\"으로 시작해 주세요. 위 버튼을 눌러도 돼요." };
+    if (text.length < MIN_COMMENT) return { ok: false, message: "댓글을 " + MIN_COMMENT + "자 이상 적어 주세요. (지금 " + text.length + "자)" };
+    return { ok: true, message: "고마워요! 피드백을 남겼어요.", feedback: { id: uid(), workId: work.id, usable: d.usable, rule: d.rule, works: d.works, comment: text, ts: Date.now() } };
+  }
+  function feedbackForm(work) {
+    const ta = el("textarea", { placeholder: "좋은 점: … / 고칠 점: … (10자 이상)" });
+    const msg = el("div", { class: "msg" });
+    const insertPrefix = p => { const cur = ta.value.replace(/^(좋은 점:|고칠 점:)\s*/, ""); ta.value = p + " " + cur; ta.focus(); };
+    const submit = () => {
+      const r = validateFeedback(work, ta.value);
+      msg.className = "msg " + (r.ok ? "ok" : "bad"); msg.textContent = r.message;
+      if (!r.ok) return;
+      drafts = { ...drafts, [work.id]: {} };
+      setState({ ...state, feedbacks: [...state.feedbacks, r.feedback] });
+    };
+    return el("div", {}, [
+      ...CRITERIA.map(c => criterionBlock(work, c)),
+      el("div", { class: "row prefix-row" }, PREFIXES.map(p => el("button", { class: "secondary", type: "button", text: p, onclick: () => insertPrefix(p) }))),
+      ta, el("div", { class: "row", style: "margin-top:8px" }, [el("button", { text: "피드백 남기기 (이름 없이)", onclick: submit }), msg])
+    ]);
+  }
+  function workCard(work) {
+    const n = state.feedbacks.filter(f => f.workId === work.id).length;
+    return el("div", { class: "card" }, [
+      el("div", { class: "work-head" }, [el("h3", { text: work.name }), el("span", { class: "badge", text: "피드백 " + n + "개" })]),
+      el("div", { class: "work-meta" }, ["만든 사람: " + work.author + " · 누구를 위해: " + characterName(work.character)]),
+      el("p", {}, richText(work.desc)),
+      el("p", {}, ["푸는 문제: ", ...richText(work.problem), " ", ...(work.evidence ? [evidenceBadge(work.evidence)] : [])]),
+      feedbackForm(work)
+    ]);
+  }
+  function renderGallery(view) {
+    view.appendChild(registerForm());
+    const h = el("h2", { text: "작품 갤러리 (" + state.works.length + "개)", style: "margin-top:20px" });
+    view.appendChild(h);
+    if (!state.works.length) { view.appendChild(el("p", { class: "muted", text: "아직 작품이 없어요. 위에서 등록하거나 '예시 채우기'를 눌러 보세요." })); return; }
+    view.appendChild(el("div", { class: "grid two" }, state.works.map(workCard)));
+  }
+
+  // ---------- 교사 대시보드 ----------
+  function statsTable(rows) {
+    const head = el("tr", {}, [el("th", { text: "작품" }), el("th", { text: "피드백 수" }), ...CRITERIA.map(c => el("th", { text: c.label }))]);
+    const body = rows.map(r => el("tr", {}, [
+      el("td", {}, [el("b", { text: r.work.name }), el("div", { class: "muted", text: r.work.author + " · " + characterName(r.work.character) })]),
+      el("td", { text: String(r.count) }),
+      ...r.avgs.map(a => el("td", { class: r.lowest && r.lowest.id === a.id ? "low" : "", text: fmt(a.avg) }))
+    ]));
+    return el("div", { style: "overflow-x:auto" }, [el("table", {}, [el("thead", {}, [head]), el("tbody", {}, body)])]);
+  }
+  function barChart(avgs) {
+    const W = 420, H = 170, base = 130, bw = 90, gap = 40, left = 40;
+    const bars = avgs.map((a, i) => {
+      const h = a.avg === null ? 0 : (a.avg / 3) * 100;
+      const x = left + i * (bw + gap);
+      return '<rect x="' + x + '" y="' + (base - h) + '" width="' + bw + '" height="' + h + '" rx="6" fill="' + (i === 1 ? "#8a6a3f" : i === 2 ? "#3a8f5a" : "#c8553d") + '"/>' +
+        '<text x="' + (x + bw / 2) + '" y="' + (base - h - 6) + '" text-anchor="middle" font-size="13" font-weight="700">' + fmt(a.avg) + '</text>' +
+        '<text x="' + (x + bw / 2) + '" y="' + (base + 20) + '" text-anchor="middle" font-size="12">' + a.label + '</text>';
+    }).join("");
+    const grid = [1, 2, 3].map(v => '<line x1="' + left + '" x2="' + (W - 10) + '" y1="' + (base - v / 3 * 100) + '" y2="' + (base - v / 3 * 100) + '" stroke="#e6dfd3" stroke-dasharray="4 4"/><text x="' + (left - 8) + '" y="' + (base - v / 3 * 100 + 4) + '" text-anchor="end" font-size="11" fill="#6f675d">' + v + '</text>').join("");
+    return el("div", { class: "chart", html: '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="기준별 평균 막대그래프">' + grid + bars + '</svg>' });
+  }
+  function patternLine(rows) {
+    const top = mostFlagged(rows);
+    if (!top) return el("div", { class: "pattern", text: "피드백이 모이면 여기에서 우리 반의 패턴을 찾아 드려요." });
+    const fixes = state.feedbacks.filter(f => f.comment.startsWith("고칠 점:")).length;
+    return el("div", { class: "pattern" }, [
+      el("b", { text: "가장 많이 지적된 기준: " + top.label }),
+      el("div", { text: "피드백을 받은 " + top.total + "개 작품 중 " + top.n + "개에서 이 기준이 가장 낮았어요. (전체 평균 " + fmt(top.overallAvg) + "점, 고칠 점 댓글 " + fixes + "개)" }),
+      el("div", { class: "muted", text: "→ 이 기준이 가장 낮은 작품 하나를 골라 학급 앞에서 함께 고쳐 보세요." })
+    ]);
+  }
+  function commentList() {
+    const pass = f => ui.filter === "all" || f.comment.startsWith(ui.filter);
+    const filters = [{ id: "all", label: "전체" }, { id: "좋은 점:", label: "좋은 점" }, { id: "고칠 점:", label: "고칠 점" }];
+    const bar = el("div", { class: "row filter" }, filters.map(x => el("button", { class: "ghost " + (ui.filter === x.id ? "on" : ""), text: x.label, onclick: () => setUi({ filter: x.id }) })));
+    const groups = state.works.map(w => {
+      const list = state.feedbacks.filter(f => f.workId === w.id && pass(f));
+      return el("div", { style: "margin-top:10px" }, [
+        el("b", { text: w.name + " (" + list.length + ")" }),
+        ...(list.length ? list.map(f => el("div", { class: "comment " + (f.comment.startsWith("좋은 점:") ? "good" : "fix") }, richText(f.comment))) : [el("div", { class: "muted", text: "해당 댓글이 없어요." })])
+      ]);
+    });
+    return el("div", { class: "card" }, [el("h3", { text: "댓글 모아 보기" }), bar, ...groups]);
+  }
+  function csvLink() {
+    const q = s => '"' + String(s).replace(/"/g, '""') + '"';
+    const head = ["작품", "만든 사람", "인물", "①인물이 쓸 수 있나", "②제약을 지켰나", "③작동하나", "댓글"];
+    const lines = state.feedbacks.map(f => {
+      const w = state.works.find(x => x.id === f.workId) || { name: "?", author: "?", character: "?" };
+      return [w.name, w.author, characterName(w.character), f.usable, f.rule, f.works, f.comment].map(q).join(",");
+    });
+    const csv = "﻿" + [head.map(q).join(","), ...lines].join("\r\n");
+    return el("a", { class: "btn secondary", href: "data:text/csv;charset=utf-8," + encodeURIComponent(csv), download: "gallery-feedback.csv", text: "CSV 내려받기" });
+  }
+  function renderDash(view) {
+    const rows = state.works.map(statsFor);
+    view.appendChild(el("div", { class: "card" }, [
+      el("div", { class: "work-head" }, [el("h3", { text: "작품별 평균 (가장 낮은 기준은 붉게 표시)" }), csvLink()]),
+      rows.length ? statsTable(rows) : el("p", { class: "muted", text: "작품이 없어요. 갤러리 탭에서 등록하거나 '예시 채우기'를 눌러 보세요." })
+    ]));
+    view.appendChild(el("div", { class: "grid two", style: "margin-top:16px" }, [
+      el("div", { class: "card" }, [el("h3", { text: "기준별 평균 (모든 작품)" }), barChart(overallAvgs())]),
+      el("div", { class: "card" }, [el("h3", { text: "우리 반의 패턴 찾기 (귀납)" }), patternLine(rows)])
+    ]));
+    view.appendChild(el("div", { style: "margin-top:16px" }, [commentList()]));
+  }
+
+  // ---------- 예시 데이터 ----------
+  function seedData() {
+    const w = [
+      { id: uid(), name: "늑대 경보 종", author: "벽돌왕", character: "third", desc: "늑대가 문 앞 발판을 밟으면 줄이 당겨져 종이 울려요.", problem: "늑대가 밤에 몰래 오는 것", evidence: 16 },
+      { id: uid(), name: "굴뚝 쇠뚜껑", author: "굴뚝지기", character: "third", desc: "굴뚝 위에 무거운 쇠뚜껑을 덮어 늑대가 못 내려와요.", problem: "늑대가 굴뚝으로 들어오는 것", evidence: 40 },
+      { id: uid(), name: "짚집 버팀목", author: "첫째응원단", character: "first", desc: "짚집 벽에 나뭇가지 버팀목을 세워 바람에 덜 흔들려요.", problem: "짚집이 한 번 불면 날아가는 것", evidence: 20 }
+    ];
+    const mk = (workId, u, r, k, comment) => ({ id: uid(), workId, usable: u, rule: r, works: k, comment, ts: Date.now() });
+    const fb = [
+      mk(w[0].id, 3, 3, 3, "좋은 점: 줄과 종만 있으면 되니까 옛날에도 만들 수 있어요."),
+      mk(w[0].id, 3, 2, 2, "고칠 점: 형이 밟아도 울려요. 문장 21처럼 형이 도망 올 때 헛경보가 나요."),
+      mk(w[0].id, 2, 3, 3, "좋은 점: 밤에 늑대가 와도 소리로 알 수 있어요. 문장 16"),
+      mk(w[0].id, 3, 3, 2, "고칠 점: 검증 카드 2(형이 와도 안 울린다)를 통과 못 했어요."),
+      mk(w[0].id, 3, 2, 3, "좋은 점: 자는 동안에도 지켜 줘서 좋아요."),
+      mk(w[1].id, 2, 1, 3, "고칠 점: 쇠는 책에 없어요. 재료는 짚·나뭇가지·벽돌뿐이에요. 문장 12"),
+      mk(w[1].id, 1, 1, 3, "고칠 점: 돼지 힘으로 쇠뚜껑을 들 수 있을까요? 벽돌로 바꾸면 어때요?"),
+      mk(w[1].id, 2, 2, 3, "좋은 점: 굴뚝을 막으면 늑대가 못 들어와요. 문장 42 대신 쓸 수 있어요."),
+      mk(w[1].id, 2, 1, 2, "고칠 점: 뚜껑을 덮으면 벽난로 연기가 못 나가요. 문장 41"),
+      mk(w[2].id, 3, 3, 1, "고칠 점: 검증 카드 1(늑대가 한 번 불어도 안 날아간다)에서 실패했어요."),
+      mk(w[2].id, 3, 3, 2, "좋은 점: 첫째가 가진 짚과 나뭇가지만 써서 제약을 잘 지켰어요."),
+      mk(w[2].id, 2, 3, 1, "고칠 점: 버팀목만으로는 문장 20처럼 한 번에 날아가요. 벽을 두껍게 해야 해요."),
+      mk(w[2].id, 3, 2, 2, "좋은 점: 하루 만에 만들 수 있어서 첫째한테 맞아요. 문장 8"),
+      mk(w[2].id, 3, 3, 1, "고칠 점: 바람 시험에서 두 번째부터 쓰러졌어요."),
+      mk(w[2].id, 2, 3, 2, "고칠 점: 나뭇가지는 둘째 재료라서 첫째가 구할 수 있는지 확인해요. 문장 9")
+    ];
+    setState({ works: w, feedbacks: fb });
+  }
+
+  function render() {
+    renderTabs();
+    const view = document.getElementById("view");
+    view.innerHTML = "";
+    if (ui.tab === "gallery") renderGallery(view); else renderDash(view);
+  }
+
+  document.getElementById("seedBtn").addEventListener("click", () => {
+    if (state.works.length && !confirm("지금 있는 작품과 피드백을 지우고 예시로 바꿀까요?")) return;
+    seedData();
+  });
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    if (!confirm("작품과 피드백을 모두 지울까요?")) return;
+    drafts = {}; setState({ works: [], feedbacks: [] });
+  });
+  render();
+})();
+</script>
+</body>
+</html>
