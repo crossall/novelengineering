@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>검증 카드 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+  .toolbar .field { margin: 0; flex: 1; min-width: 200px; }
+  .toolbar select { min-width: 180px; }
+  .vcard { border-top: 5px solid var(--straw); }
+  .vcard.n1 { border-top-color: var(--stick); }
+  .vcard.n2 { border-top-color: var(--wolf); }
+  .vcard textarea { min-height: 56px; font-size: .92rem; }
+  .vcard .hint { font-size: .82rem; color: var(--muted); margin: 0 0 8px; }
+  .vcard .result-row { display: flex; align-items: center; gap: 8px; }
+  .vcard .result-row select { width: auto; }
+  .vcard.pass { background: #f4faf6; }
+  .vcard.fail { background: #fdf3f2; }
+  .msg { font-size: .85rem; color: var(--bad); min-height: 1.2em; margin: 2px 0 6px; }
+  .summary { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 1.1rem; font-weight: 600; }
+  .reflect { margin-top: 14px; border-left: 4px solid var(--bad); padding: 10px 14px; background: #fff; border-radius: 0 10px 10px 0; }
+  .reflect label.radio { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; margin-right: 16px; }
+  .reflect input[type="radio"] { width: auto; }
+</style>
+</head>
+<body data-stage="4단계 창작물 만들기" data-who="교사" data-title="검증 카드">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 검증(예상 vs 실제) → 메타인지(명세를 고칠까, 만든 것을 고칠까)</div>
+    <p>만든 것이 명세대로 되는지 세 가지 경우로 확인합니다. 늘 일어나는 <b>보통 경우</b>, 딱 경계선인 <b>경계 경우</b>, 예상 못 한 <b>이상한 입력</b>.
+    "예상"을 먼저 적고 나서 실제로 해 봅니다. 실패한 카드가 있으면 학생은 무엇을 고칠지 결정해야 합니다.</p>
+  </div>
+
+  <div class="toolbar">
+    <div class="field"><label for="proj-select">프로젝트</label><select id="proj-select"></select></div>
+    <div class="field"><label for="proj-name">프로젝트 이름</label><input type="text" id="proj-name" placeholder="예: 늑대 경보 종"></div>
+    <button class="secondary" id="btn-new">새 프로젝트</button>
+    <button class="secondary" id="btn-suggest">카드 제안 (늑대 경보 종)</button>
+    <button class="ghost" id="btn-delete">삭제</button>
+  </div>
+  <div class="msg" id="proj-msg"></div>
+
+  <div class="grid three" id="cards"></div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="summary"><span id="sum-text">3개 중 0개 통과</span><span class="badge" id="sum-badge">아직</span></div>
+    <p class="muted" id="sum-hint" style="margin:6px 0 0"></p>
+    <div class="reflect" id="reflect" hidden>
+      <p><b>실패한 카드에서 무엇을 배웠나요? 명세를 고칠까요, 만든 것을 고칠까요?</b></p>
+      <div style="margin-bottom:8px">
+        <label class="radio"><input type="radio" name="fix" value="spec"> 명세를 고친다 (예상이 틀렸거나 애매했다)</label>
+        <label class="radio"><input type="radio" name="fix" value="build"> 만든 것을 고친다 (예상은 맞는데 결과가 다르다)</label>
+      </div>
+      <textarea id="reflect-text" placeholder="예: 경계 경우에서 '2m 안'이 2m를 포함하는지 명세에 안 적었다. 명세를 '2m 미만'으로 고친다."></textarea>
+      <div class="msg" id="reflect-msg"></div>
+    </div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 학생이 만든 것(AI가 만든 HTML, 종이 모형, 역할극 어느 것이든)을 열어 놓고 카드 세 장을 채우게 합니다. 규칙은 하나 — "실제" 칸을 적기 전에 "예상" 칸을 먼저 잠급니다. 실패 카드가 나오면 아래 질문에 답하고 나서야 고치러 갑니다.
+    관찰 포인트: 경계 경우에서 "예상"을 못 쓰는 학생은 명세에 경계를 안 정한 것입니다(명세 결함 발견). 이상한 입력에서 "형이 왔는데 종이 울렸다"를 실패로 표시하는지 통과로 넘기는지가 검증 감각의 갈림길입니다. "명세를 고친다"와 "만든 것을 고친다"를 구분하는 것이 메타인지의 핵심입니다.
+    이 앱의 명세 — 기능: ① 프로젝트 여러 개 저장·전환 ② 카드 3장(보통/경계/이상한 입력) 입력 ③ 통과 수 집계와 배지 ④ 실패 시 성찰 질문 ⑤ 예시 카드 채우기. 입력: 프로젝트 이름, 카드마다 입력·예상·실제·결과·메모. 출력: "3개 중 N개 통과" 문장과 배지, 성찰 기록. 성공 조건: "실제" 칸이 비어 있으면 결과를 통과/실패로 바꿀 수 없다 / 실패가 하나라도 있으면 성찰 질문이 나타난다 / 프로젝트를 바꿔도 각각의 카드가 그대로 남아 있다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const KEY = "ne4.verify-cards";
+  const CARD_LABELS = ["보통 경우", "경계 경우", "이상한 입력"];
+  const CARD_HINTS = [
+    "늘 일어나는 일. 이게 되면 기본은 된 거예요.",
+    "딱 경계선. 2m가 기준이면 정확히 2m일 때는요?",
+    "예상 못 한 입력. 늑대가 아닌 것이 오면요?"
+  ];
+  const RESULTS = ["아직", "통과", "실패"];
+  const SUGGEST = [
+    { input: "늑대가 문 앞 1m까지 온다", expect: "종이 울린다" },
+    { input: "늑대가 정확히 경계 거리(2m)에 선다", expect: "명세에 '2m 미만'이라고 썼으면 안 울리고, '2m 이하'라고 썼으면 울린다. 명세를 보고 하나로 정한다." },
+    { input: "첫째 형이 문 앞으로 뛰어온다", expect: "종이 울리면 안 된다" }
+  ];
+  const SUGGEST_NAME = "늑대 경보 종";
+
+  function blankCard(i) { return { label: CARD_LABELS[i], input: "", expect: "", actual: "", result: "아직", memo: "" }; }
+  function blankProject(name) { return { id: NE.uid(), name: name || "", cards: [0, 1, 2].map(blankCard), reflection: { choice: "", text: "" } }; }
+  function normalizeCard(raw, i) {
+    const c = raw && typeof raw === "object" ? raw : {};
+    const str = (v) => typeof v === "string" ? v : "";
+    return { label: CARD_LABELS[i], input: str(c.input), expect: str(c.expect), actual: str(c.actual), result: RESULTS.includes(c.result) ? c.result : "아직", memo: str(c.memo) };
+  }
+  function normalizeProject(raw) {
+    const p = raw && typeof raw === "object" ? raw : {};
+    const cards = Array.isArray(p.cards) ? p.cards : [];
+    const r = p.reflection && typeof p.reflection === "object" ? p.reflection : {};
+    return { id: typeof p.id === "string" && p.id ? p.id : NE.uid(), name: typeof p.name === "string" ? p.name : "",
+      cards: [0, 1, 2].map(i => normalizeCard(cards[i], i)),
+      reflection: { choice: ["spec", "build"].includes(r.choice) ? r.choice : "", text: typeof r.text === "string" ? r.text : "" } };
+  }
+  function normalize(raw) {
+    const s = raw && typeof raw === "object" ? raw : {};
+    const projects = (Array.isArray(s.projects) ? s.projects : []).map(normalizeProject);
+    const list = projects.length ? projects : [blankProject("")];
+    const currentId = list.some(p => p.id === s.currentId) ? s.currentId : list[0].id;
+    return { projects: list, currentId };
+  }
+
+  let state = normalize(NE.load(KEY, null));
+
+  function current() { return state.projects.find(p => p.id === state.currentId); }
+  function setState(next) {
+    state = next;
+    if (!NE.save(KEY, state)) document.getElementById("proj-msg").textContent = "저장이 안 됐어요. 브라우저 저장 공간을 확인해 주세요.";
+  }
+  function updateCurrent(patch) {
+    setState(Object.assign({}, state, { projects: state.projects.map(p => p.id === state.currentId ? Object.assign({}, p, patch) : p) }));
+  }
+  function updateCard(idx, patch) {
+    updateCurrent({ cards: current().cards.map((c, i) => i === idx ? Object.assign({}, c, patch) : c) });
+  }
+
+  // ---------- 렌더 ----------
+  function renderProjects() {
+    const sel = document.getElementById("proj-select");
+    sel.innerHTML = "";
+    state.projects.forEach(p => sel.appendChild(NE.el("option", { value: p.id, text: p.name.trim() || "(이름 없음)" })));
+    sel.value = state.currentId;
+    document.getElementById("proj-name").value = current().name;
+  }
+
+  function cardNode(card, idx) {
+    const wrap = NE.el("div", { class: "card vcard n" + idx });
+    wrap.appendChild(NE.el("h3", { text: (idx + 1) + ". " + card.label }));
+    wrap.appendChild(NE.el("p", { class: "hint", text: CARD_HINTS[idx] }));
+    const area = (key, label, ph) => {
+      const ta = NE.el("textarea", { placeholder: ph });
+      ta.value = card[key];
+      ta.addEventListener("input", () => { updateCard(idx, { [key]: ta.value }); renderSummary(); });
+      wrap.appendChild(NE.el("div", { class: "field" }, [NE.el("label", { text: label }), ta]));
+      return ta;
+    };
+    area("input", "입력 — 내가 하는 것", "예: 늑대가 문 앞 1m까지 온다");
+    area("expect", "예상 — 일어나야 하는 것", "실제로 해 보기 전에 먼저 적어요");
+    area("actual", "실제 — 일어난 것", "해 보고 본 그대로 적어요");
+    const sel = NE.el("select", {});
+    RESULTS.forEach(r => sel.appendChild(NE.el("option", { value: r, text: r })));
+    sel.value = card.result;
+    const msg = NE.el("div", { class: "msg" });
+    sel.addEventListener("change", () => {
+      const cur = current().cards[idx];
+      if (sel.value !== "아직" && !cur.actual.trim()) { sel.value = "아직"; msg.textContent = "'실제' 칸을 먼저 적어 주세요. 해 보지 않고는 결과를 정할 수 없어요."; return; }
+      if (sel.value !== "아직" && !cur.expect.trim()) { sel.value = "아직"; msg.textContent = "'예상' 칸이 비어 있어요. 무엇과 비교해 통과인가요?"; return; }
+      msg.textContent = "";
+      updateCard(idx, { result: sel.value });
+      wrap.className = "card vcard n" + idx + (sel.value === "통과" ? " pass" : sel.value === "실패" ? " fail" : "");
+      renderSummary();
+    });
+    wrap.appendChild(NE.el("div", { class: "field" }, [NE.el("label", { text: "결과" }), NE.el("div", { class: "result-row" }, [sel]), msg]));
+    area("memo", "메모", "왜 그런지, 무엇을 알게 됐는지");
+    if (card.result === "통과") wrap.classList.add("pass");
+    if (card.result === "실패") wrap.classList.add("fail");
+    return wrap;
+  }
+
+  function renderCards() {
+    const box = document.getElementById("cards");
+    box.innerHTML = "";
+    current().cards.forEach((c, i) => box.appendChild(cardNode(c, i)));
+  }
+
+  function renderSummary() {
+    const p = current();
+    const pass = p.cards.filter(c => c.result === "통과").length;
+    const fail = p.cards.filter(c => c.result === "실패").length;
+    const pending = 3 - pass - fail;
+    document.getElementById("sum-text").textContent = "3개 중 " + pass + "개 통과";
+    const badge = document.getElementById("sum-badge");
+    const level = fail > 0 ? ["bad", "실패 " + fail + "개"] : pending > 0 ? ["warn", "아직 " + pending + "개 남음"] : ["ok", "모두 통과"];
+    badge.className = "badge " + level[0];
+    badge.textContent = level[1];
+    const hint = document.getElementById("sum-hint");
+    const noExpect = p.cards.filter(c => c.input.trim() && !c.expect.trim()).length;
+    hint.textContent = !p.name.trim() ? "프로젝트 이름을 적어 주세요."
+      : noExpect > 0 ? "'예상'이 비어 있는 카드가 " + noExpect + "장 있어요. 해 보기 전에 예상을 먼저 적어요."
+      : fail === 0 && pending === 0 ? "세 경우 모두 명세대로 됐어요. 이상한 입력을 하나 더 생각해 볼까요?" : "";
+    const reflect = document.getElementById("reflect");
+    reflect.hidden = fail === 0;
+    if (fail > 0) {
+      const radios = reflect.querySelectorAll("input[name=fix]");
+      radios.forEach(r => { r.checked = r.value === p.reflection.choice; });
+      if (document.getElementById("reflect-text").value !== p.reflection.text) document.getElementById("reflect-text").value = p.reflection.text;
+      document.getElementById("reflect-msg").textContent = !p.reflection.choice ? "둘 중 하나를 골라 주세요." : !p.reflection.text.trim() ? "무엇을 배웠는지 한 줄이라도 적어 주세요." : "";
+    }
+  }
+
+  function renderAll() { renderProjects(); renderCards(); renderSummary(); }
+
+  // ---------- 동작 ----------
+  function newProject() {
+    const p = blankProject("");
+    setState(Object.assign({}, state, { projects: state.projects.concat([p]), currentId: p.id }));
+    renderAll();
+    document.getElementById("proj-name").focus();
+  }
+  function deleteProject() {
+    const p = current();
+    if (!confirm("'" + (p.name.trim() || "(이름 없음)") + "' 프로젝트를 지울까요?")) return;
+    const rest = state.projects.filter(x => x.id !== p.id);
+    const list = rest.length ? rest : [blankProject("")];
+    setState({ projects: list, currentId: list[0].id });
+    renderAll();
+  }
+  function suggest() {
+    const p = current();
+    const hasText = p.cards.some(c => c.input.trim() || c.expect.trim());
+    if (hasText && !confirm("카드의 '입력'과 '예상'을 제안 내용으로 바꿀까요? (실제·결과·메모는 그대로 둡니다)")) return;
+    updateCurrent({
+      name: p.name.trim() ? p.name : SUGGEST_NAME,
+      cards: p.cards.map((c, i) => Object.assign({}, c, { input: SUGGEST[i].input, expect: SUGGEST[i].expect }))
+    });
+    renderAll();
+    document.getElementById("proj-msg").textContent = "세 카드에 예시를 채웠어요. 이제 실제로 해 보고 '실제' 칸을 적어요.";
+  }
+
+  function bind() {
+    document.getElementById("proj-select").addEventListener("change", e => { setState(Object.assign({}, state, { currentId: e.target.value })); renderAll(); });
+    document.getElementById("proj-name").addEventListener("input", e => {
+      updateCurrent({ name: e.target.value });
+      const opt = document.getElementById("proj-select").querySelector("option[value='" + state.currentId + "']");
+      if (opt) opt.textContent = e.target.value.trim() || "(이름 없음)";
+      renderSummary();
+    });
+    document.getElementById("btn-new").addEventListener("click", newProject);
+    document.getElementById("btn-delete").addEventListener("click", deleteProject);
+    document.getElementById("btn-suggest").addEventListener("click", suggest);
+    document.querySelectorAll("input[name=fix]").forEach(r => r.addEventListener("change", () => {
+      updateCurrent({ reflection: Object.assign({}, current().reflection, { choice: r.value }) });
+      renderSummary();
+    }));
+    document.getElementById("reflect-text").addEventListener("input", e => {
+      updateCurrent({ reflection: Object.assign({}, current().reflection, { text: e.target.value }) });
+      renderSummary();
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => { bind(); renderAll(); });
+})();
+</script>
+</body>
+</html>

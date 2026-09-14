@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>명세서 템플릿 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .list-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .list-row input { flex: 1; }
+  .list-row .idx { width: 22px; color: var(--muted); font-size: .85rem; text-align: right; }
+  .list-row button { padding: 4px 10px; font-size: .85rem; }
+  .hint { font-size: .85rem; color: var(--muted); margin: 0 0 6px; }
+  .msg { font-size: .85rem; color: var(--bad); min-height: 1.2em; margin: 2px 0 6px; }
+  .msg.ok { color: var(--ok); }
+  .check-list { list-style: none; margin: 8px 0 0; padding: 0; }
+  .check-list li { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+  .check-list li.ok { color: var(--ok); }
+  .check-list li.warn { color: var(--warn); }
+  .check-list li.bad { color: var(--bad); }
+  .score { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+  .score-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .search-results { max-height: 200px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; margin-top: 6px; }
+  .search-results button { display: block; width: 100%; text-align: left; background: #fff; color: var(--ink); border: 0; border-bottom: 1px solid var(--line); border-radius: 0; font-weight: 400; font-size: .88rem; }
+  .search-results button:hover { background: var(--accent-soft); }
+  .side { position: sticky; top: 12px; }
+  #prompt-out { min-height: 300px; font-family: ui-monospace, Consolas, monospace; font-size: .85rem; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .section-title { display: flex; justify-content: space-between; align-items: baseline; }
+  .section-title small { color: var(--muted); }
+</style>
+</head>
+<body data-stage="4단계 창작물 만들기" data-who="교사" data-title="명세서 템플릿">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 명세(수렴) → 검증 가능성 점검(메타인지)</div>
+    <p>무엇을 만들지 칸을 채우면 "명세 품질 체크"가 바로 반응합니다. "잘", "예쁘게" 같은 애매한 말, 확인할 수 없는 성공 조건을 짚어 줍니다.
+    학생은 여기서 "내가 원하는 것"을 "남이 확인할 수 있는 문장"으로 바꾸는 연습을 합니다. 다 채우면 AI에 보낼 프롬프트로 바꿉니다.</p>
+  </div>
+
+  <div class="toolbar">
+    <button class="secondary" id="btn-example">예시 불러오기 (늑대 경보 종)</button>
+    <button class="ghost" id="btn-reset">비우기</button>
+  </div>
+
+  <div class="grid two">
+    <div>
+      <div class="card">
+        <h3>1. 무엇을, 누구를 위해</h3>
+        <div class="field"><label for="f-name">만들 것 이름</label><input type="text" id="f-name" placeholder="예: 늑대 경보 종"></div>
+        <div class="field"><label for="f-who">누구를 위해</label><select id="f-who"></select></div>
+        <div class="field">
+          <label for="f-problem">어떤 문제를 푸나 (한 줄)</label>
+          <input type="text" id="f-problem" placeholder="예: 늑대가 밤에 몰래 와도 돼지들은 잠들어서 모른다">
+        </div>
+        <div class="field">
+          <label for="ev-search">근거 문장 찾기</label>
+          <p class="hint">이 문제가 이야기 어디에서 나오는지 원문에서 고릅니다.</p>
+          <input type="text" id="ev-search" placeholder="예: 늑대 밤, 굴뚝, 문 열어">
+          <div class="search-results" id="ev-results" hidden></div>
+          <div id="ev-chosen" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="section-title"><h3>2. 기능</h3><small>1~5개</small></div>
+        <p class="hint">이것이 "하는 일"을 하나씩 씁니다. 한 줄에 한 가지만.</p>
+        <div id="list-features"></div>
+        <div class="msg" id="msg-features"></div>
+        <button class="ghost" id="add-features">+ 기능 추가</button>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="section-title"><h3>3. 입력과 출력</h3><small>각 1~5개</small></div>
+        <label>입력 — 이것이 받는 것</label>
+        <div id="list-inputs"></div>
+        <div class="msg" id="msg-inputs"></div>
+        <button class="ghost" id="add-inputs">+ 입력 추가</button>
+        <div style="height:12px"></div>
+        <label>출력 — 이것이 내놓는 것</label>
+        <div id="list-outputs"></div>
+        <div class="msg" id="msg-outputs"></div>
+        <button class="ghost" id="add-outputs">+ 출력 추가</button>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="section-title"><h3>4. 성공 조건</h3><small>3개 이상</small></div>
+        <p class="hint">"~이면 ~한다"처럼 확인할 수 있게. 숫자가 들어가면 더 좋아요.</p>
+        <div id="list-success"></div>
+        <div class="msg" id="msg-success"></div>
+        <button class="ghost" id="add-success">+ 성공 조건 추가</button>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="section-title"><h3>5. 하지 않을 것 (범위)</h3><small>1~5개</small></div>
+        <p class="hint">일부러 안 만드는 것. 범위를 정하면 AI가 엉뚱한 것을 덧붙이지 않아요.</p>
+        <div id="list-scope"></div>
+        <div class="msg" id="msg-scope"></div>
+        <button class="ghost" id="add-scope">+ 항목 추가</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="side">
+        <div class="card">
+          <h3>명세 품질 체크</h3>
+          <div class="score-row"><span class="score" id="score">0</span><span class="badge" id="score-badge">시작 전</span></div>
+          <p class="hint">칸을 채울 때마다 다시 계산합니다.</p>
+          <ul class="check-list" id="check-list"></ul>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>프롬프트로 바꾸기</h3>
+          <p class="hint">명세를 AI에게 보낼 글로 바꿉니다. 이야기 속 제약도 함께 들어갑니다.</p>
+          <div class="row" style="margin-bottom:8px">
+            <button id="btn-compose">프롬프트로 바꾸기</button>
+            <button class="secondary" id="btn-copy" disabled>복사</button>
+            <span class="msg ok" id="copy-msg" style="margin:0"></span>
+          </div>
+          <textarea id="prompt-out" readonly placeholder="여기에 프롬프트가 만들어집니다."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 3단계에서 고른 해결책 하나를 이 템플릿에 옮겨 적게 합니다. 처음엔 "잘", "예쁘게"가 잔뜩 뜨는 것이 정상이며, 체크 목록이 노란색·빨간색에서 초록색으로 바뀌는 과정을 화면에 띄워 놓고 함께 고칩니다.
+    관찰 포인트: 성공 조건에 숫자와 "~이면"이 들어가는 순간(검증 가능성), 기능 수와 성공 조건 수를 맞추려 되돌아가 기능을 지우는 순간(범위 축소)이 명세 사고가 드러나는 지점입니다.
+    이 앱의 명세 — 기능: ① 명세 8칸 입력 ② 애매한 말 8종 탐지 ③ 성공 조건 검증 가능성 검사 ④ 0~100점 계산 ⑤ 프롬프트 생성·복사. 입력: 텍스트 칸, 인물 선택, 근거 문장 검색어. 출력: 체크 목록, 점수 배지, 프롬프트 텍스트. 성공 조건: "잘"을 쓰면 1초 안에 경고가 뜬다 / 숫자도 "~이면"도 없는 성공 조건은 노란 경고가 뜬다 / 필수 칸이 모두 차면 점수가 80 이상이 된다 / 새로고침해도 입력이 남아 있다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const KEY = "ne4.spec-template";
+  const VAGUE = ["예쁘게", "잘", "좋게", "멋지게", "적당히", "알아서", "대충", "여러 가지"];
+  const TESTABLE = /(이면|하면|되면|라면|으면|때)/;
+  const HAS_NUMBER = /\d/;
+  const LIMITS = { features: { min: 1, max: 5 }, inputs: { min: 1, max: 5 }, outputs: { min: 1, max: 5 }, success: { min: 3, max: 6 }, scope: { min: 1, max: 5 } };
+  const LABELS = { name: "만들 것 이름", problem: "어떤 문제를 푸나", features: "기능", inputs: "입력", outputs: "출력", success: "성공 조건", scope: "하지 않을 것" };
+  const PLACEHOLDER = { features: "예: 문 앞 2m 안에 무언가 오면 종을 울린다", inputs: "예: 문 앞 거리(m)", outputs: "예: 종소리(울림/조용)", success: "예: 늑대가 2m 안에 오면 1초 안에 종이 울린다", scope: "예: 늑대를 쫓아내지는 않는다" };
+  const CONTEXT_CONSTRAINTS = ["c1", "c6", "c7", "c8"];
+  const EMPTY = { name: "", who: "third", problem: "", evidence: null, features: [""], inputs: [""], outputs: [""], success: ["", "", ""], scope: [""] };
+  const EXAMPLE = {
+    name: "늑대 경보 종", who: "third",
+    problem: "늑대가 밤에 몰래 문 앞에 와도 돼지들은 잠들어서 모른다",
+    evidence: 16,
+    features: ["문 앞 2m 안에 무언가 오면 종을 울린다", "종이 울린 시각을 기록한다", "형이 온 것으로 등록되면 울리지 않는다"],
+    inputs: ["문 앞 거리(m)", "누가 왔는지(늑대/형)"],
+    outputs: ["종소리(울림/조용)", "울린 시각 목록"],
+    success: ["늑대가 2m 안에 오면 1초 안에 종이 울린다", "형이 오면 종이 울리지 않는다", "거리가 2m보다 멀면 종이 울리지 않는다"],
+    scope: ["늑대를 쫓아내지는 않는다", "문을 자동으로 잠그지 않는다"]
+  };
+
+  function normalize(raw) {
+    const src = raw && typeof raw === "object" ? raw : {};
+    const list = (key) => {
+      const arr = Array.isArray(src[key]) ? src[key].filter(v => typeof v === "string") : [];
+      const padded = arr.length >= LIMITS[key].min ? arr : arr.concat(Array(LIMITS[key].min - arr.length).fill(""));
+      return padded.slice(0, LIMITS[key].max);
+    };
+    return {
+      name: typeof src.name === "string" ? src.name : "",
+      who: STORY.characters.some(c => c.id === src.who) ? src.who : "third",
+      problem: typeof src.problem === "string" ? src.problem : "",
+      evidence: STORY.byId(src.evidence) ? src.evidence : null,
+      features: list("features"), inputs: list("inputs"), outputs: list("outputs"), success: list("success"), scope: list("scope")
+    };
+  }
+
+  let spec = normalize(NE.load(KEY, EMPTY));
+
+  function setSpec(next) {
+    spec = next;
+    if (!NE.save(KEY, spec)) document.getElementById("msg-features").textContent = "저장이 안 됐어요. 브라우저 저장 공간을 확인해 주세요.";
+    renderCheck();
+  }
+
+  // ---------- 품질 체크 ----------
+  function findVague(text) {
+    return VAGUE.filter(w => w === "잘" ? /(^|\s)잘(\s|$|[.,!?])/.test(text) : text.includes(w));
+  }
+  function nonEmpty(arr) { return arr.filter(v => v.trim() !== ""); }
+
+  function collectVague(s) {
+    const fields = [["만들 것 이름", s.name], ["문제", s.problem]]
+      .concat(["features", "inputs", "outputs", "success", "scope"].flatMap(k => s[k].map((v, i) => [LABELS[k] + " " + (i + 1), v])));
+    return fields.flatMap(([label, text]) => findVague(text).map(w => ({ label, word: w })));
+  }
+
+  function checkSpec(s) {
+    const items = [];
+    const bad = (t) => items.push({ level: "bad", text: t });
+    const warn = (t) => items.push({ level: "warn", text: t });
+    if (!s.name.trim()) bad("만들 것 이름이 비어 있어요.");
+    if (!s.problem.trim()) bad("어떤 문제를 푸는지 한 줄로 적어 주세요.");
+    if (s.evidence === null) warn("근거 문장을 아직 고르지 않았어요. 이야기 어디에서 나온 문제인가요?");
+    const f = nonEmpty(s.features), i = nonEmpty(s.inputs), o = nonEmpty(s.outputs), sc = nonEmpty(s.success), sp = nonEmpty(s.scope);
+    if (f.length === 0) bad("기능이 하나도 없어요.");
+    if (i.length === 0) bad("입력이 없어요. 이것은 무엇을 받나요?");
+    if (o.length === 0) bad("출력이 없어요. 이것은 무엇을 내놓나요?");
+    if (sc.length < 3) bad("성공 조건은 3개 이상 필요해요. (지금 " + sc.length + "개)");
+    if (sp.length === 0) warn("하지 않을 것을 하나는 정해 주세요. 범위가 없으면 끝이 없어요.");
+    collectVague(s).forEach(v => warn("'" + v.word + "' — " + v.label + "에 있어요. 숫자나 구체적인 말로 바꿔요."));
+    s.success.forEach((c, idx) => {
+      if (c.trim() && !HAS_NUMBER.test(c) && !TESTABLE.test(c)) warn("성공 조건 " + (idx + 1) + ": 숫자도, '~이면/~하면/~때'도 없어요. 어떻게 확인하죠?");
+    });
+    if (f.length > sc.length) warn("기능은 " + f.length + "개, 성공 조건은 " + sc.length + "개예요. 기능마다 확인할 조건이 있나요?");
+    if (sc.length > f.length + 2) warn("성공 조건이 기능보다 훨씬 많아요. 기능에 없는 것을 약속하고 있지 않나요?");
+    const score = Math.max(0, Math.min(100, 100 - items.filter(x => x.level === "bad").length * 12 - items.filter(x => x.level === "warn").length * 6));
+    return { items, score };
+  }
+
+  function renderCheck() {
+    const { items, score } = checkSpec(spec);
+    const ul = document.getElementById("check-list");
+    ul.innerHTML = "";
+    if (items.length === 0) ul.appendChild(NE.el("li", { class: "ok", text: "빈틈이 안 보여요. 프롬프트로 바꿔 보세요." }));
+    items.forEach(it => ul.appendChild(NE.el("li", { class: it.level, text: it.text })));
+    document.getElementById("score").textContent = String(score);
+    const badge = document.getElementById("score-badge");
+    const level = score >= 80 ? ["ok", "좋은 명세"] : score >= 50 ? ["warn", "다듬기"] : ["bad", "다시 보기"];
+    badge.className = "badge " + level[0];
+    badge.textContent = level[1];
+  }
+
+  // ---------- 목록 칸 ----------
+  function updateItem(key, idx, value) {
+    setSpec(Object.assign({}, spec, { [key]: spec[key].map((v, j) => j === idx ? value : v) }));
+  }
+  function addItem(key) {
+    if (spec[key].length >= LIMITS[key].max) { document.getElementById("msg-" + key).textContent = "최대 " + LIMITS[key].max + "개까지예요."; return; }
+    setSpec(Object.assign({}, spec, { [key]: spec[key].concat([""]) }));
+    renderList(key);
+  }
+  function removeItem(key, idx) {
+    if (spec[key].length <= LIMITS[key].min) { document.getElementById("msg-" + key).textContent = "최소 " + LIMITS[key].min + "개는 있어야 해요."; return; }
+    setSpec(Object.assign({}, spec, { [key]: spec[key].filter((_, j) => j !== idx) }));
+    renderList(key);
+  }
+  function renderList(key) {
+    const box = document.getElementById("list-" + key);
+    box.innerHTML = "";
+    spec[key].forEach((val, i) => {
+      const input = NE.el("input", { type: "text", placeholder: PLACEHOLDER[key] });
+      input.value = val;
+      input.addEventListener("input", () => updateItem(key, i, input.value));
+      const del = NE.el("button", { class: "ghost", text: "삭제", onclick: () => removeItem(key, i) });
+      box.appendChild(NE.el("div", { class: "list-row" }, [NE.el("span", { class: "idx", text: (i + 1) + "." }), input, del]));
+    });
+    document.getElementById("add-" + key).disabled = spec[key].length >= LIMITS[key].max;
+    document.getElementById("msg-" + key).textContent = "";
+  }
+
+  // ---------- 근거 문장 ----------
+  function renderEvidence() {
+    const box = document.getElementById("ev-chosen");
+    box.innerHTML = "";
+    const s = spec.evidence === null ? null : STORY.byId(spec.evidence);
+    if (!s) { box.appendChild(NE.el("span", { class: "hint", text: "아직 고른 문장이 없어요." })); return; }
+    box.appendChild(NE.el("div", { class: "quote" }, [NE.evidenceBadge(s.id), s.text]));
+    box.appendChild(NE.el("button", { class: "ghost", text: "다른 문장 고르기", onclick: () => { setSpec(Object.assign({}, spec, { evidence: null })); renderEvidence(); } }));
+  }
+  function renderSearch(query) {
+    const box = document.getElementById("ev-results");
+    box.innerHTML = "";
+    const results = STORY.search(query).slice(0, 8);
+    box.hidden = query.trim() === "";
+    if (query.trim() && results.length === 0) { box.appendChild(NE.el("div", { class: "hint", style: "padding:8px", text: "맞는 문장이 없어요. 다른 낱말로 찾아보세요." })); return; }
+    results.forEach(s => box.appendChild(NE.el("button", { text: "문장 " + s.id + " · " + s.text, onclick: () => {
+      setSpec(Object.assign({}, spec, { evidence: s.id }));
+      document.getElementById("ev-search").value = "";
+      box.hidden = true;
+      renderEvidence();
+    } })));
+  }
+
+  // ---------- 프롬프트 ----------
+  function numbered(arr) { return nonEmpty(arr).map((v, i) => (i + 1) + ". " + v.trim()).join("\n") || "(없음)"; }
+  function bulleted(arr) { return nonEmpty(arr).map(v => "- " + v.trim()).join("\n") || "(없음)"; }
+  function composePrompt(s) {
+    const who = STORY.characters.find(c => c.id === s.who);
+    const ev = s.evidence === null ? null : STORY.byId(s.evidence);
+    const constraints = STORY.constraints.filter(c => CONTEXT_CONSTRAINTS.includes(c.id))
+      .map(c => "- (" + c.kind + ") " + c.text + " [문장 " + c.evidence.join(", ") + "]").join("\n");
+    return [
+      "[역할]", "당신은 초등학생이 쓴 명세를 그대로 구현하는 개발자입니다. 명세에 없는 기능은 만들지 마세요. 어려운 말 대신 초등학생이 읽을 수 있는 한국어로 화면 글을 씁니다.", "",
+      "[맥락: 「아기돼지 삼형제」 이야기 속 상황]",
+      "풀려는 문제: " + (s.problem.trim() || "(비어 있음)"),
+      ev ? "근거 문장 " + ev.id + ": \"" + ev.text + "\"" : "근거 문장: (아직 고르지 않음)",
+      "이야기 속 제약:", constraints, "",
+      "[만들 것] " + (s.name.trim() || "(이름 없음)"),
+      "[누구를 위해] " + (who ? who.name + " — " + who.role : "(미정)"), "",
+      "[기능]", numbered(s.features), "",
+      "[입력]", bulleted(s.inputs), "",
+      "[출력]", bulleted(s.outputs), "",
+      "[성공 조건] 아래 조건이 모두 통과해야 합니다.", numbered(s.success), "",
+      "[하지 않을 것]", bulleted(s.scope), "",
+      "HTML 파일 하나로 만들어 주세요. 외부 라이브러리 없이."
+    ].join("\n");
+  }
+  function copyText(text) {
+    const done = () => { document.getElementById("copy-msg").textContent = "복사했어요."; setTimeout(() => { document.getElementById("copy-msg").textContent = ""; }, 2000); };
+    const fail = () => { document.getElementById("copy-msg").textContent = "복사가 안 됐어요. 글을 직접 선택해 복사해 주세요."; };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fail); return; }
+    try { const ta = document.getElementById("prompt-out"); ta.select(); document.execCommand("copy") ? done() : fail(); } catch (e) { fail(); }
+  }
+
+  // ---------- 전체 렌더 ----------
+  function renderForm() {
+    document.getElementById("f-name").value = spec.name;
+    document.getElementById("f-problem").value = spec.problem;
+    const who = document.getElementById("f-who");
+    who.innerHTML = "";
+    STORY.characters.forEach(c => who.appendChild(NE.el("option", { value: c.id, text: c.name + " — " + c.role })));
+    who.value = spec.who;
+    Object.keys(LIMITS).forEach(renderList);
+    renderEvidence();
+    renderCheck();
+  }
+
+  function bind() {
+    document.getElementById("f-name").addEventListener("input", e => setSpec(Object.assign({}, spec, { name: e.target.value })));
+    document.getElementById("f-problem").addEventListener("input", e => setSpec(Object.assign({}, spec, { problem: e.target.value })));
+    document.getElementById("f-who").addEventListener("change", e => setSpec(Object.assign({}, spec, { who: e.target.value })));
+    document.getElementById("ev-search").addEventListener("input", e => renderSearch(e.target.value));
+    Object.keys(LIMITS).forEach(key => document.getElementById("add-" + key).addEventListener("click", () => addItem(key)));
+    document.getElementById("btn-example").addEventListener("click", () => {
+      const filled = spec.name.trim() || spec.problem.trim();
+      if (filled && !confirm("지금 쓴 내용을 예시로 바꿀까요?")) return;
+      setSpec(normalize(EXAMPLE)); renderForm();
+    });
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      if (!confirm("모든 칸을 비울까요?")) return;
+      setSpec(normalize(EMPTY)); renderForm();
+      document.getElementById("prompt-out").value = "";
+      document.getElementById("btn-copy").disabled = true;
+    });
+    document.getElementById("btn-compose").addEventListener("click", () => {
+      const text = composePrompt(spec);
+      document.getElementById("prompt-out").value = text;
+      document.getElementById("btn-copy").disabled = false;
+      const { score } = checkSpec(spec);
+      document.getElementById("copy-msg").textContent = score < 50 ? "점수가 낮아요. 그래도 만들었지만, 애매한 곳을 먼저 고치면 결과가 좋아져요." : "";
+    });
+    document.getElementById("btn-copy").addEventListener("click", () => copyText(document.getElementById("prompt-out").value));
+  }
+
+  document.addEventListener("DOMContentLoaded", () => { bind(); renderForm(); });
+})();
+</script>
+</body>
+</html>

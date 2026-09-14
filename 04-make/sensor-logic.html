@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>늑대 감지 장치 만들기 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .house { width: 100%; max-width: 420px; display: block; margin: 0 auto; }
+  .house text { font-family: var(--font); font-size: 11px; fill: var(--muted); }
+  .house .sens { fill: #bbb; stroke: #fff; stroke-width: 2; }
+  .house .sens.on { fill: var(--accent); }
+  .house #actor { display: none; }
+  .house #actor.show { display: block; }
+  .house #actor.wolf circle { fill: var(--wolf); }
+  .house #actor.bro circle { fill: #e39aa0; }
+  .house #actor text { fill: #fff; font-size: 11px; font-weight: 700; text-anchor: middle; }
+  .house #bell { fill: #c9c2b4; }
+  .house #bell.on { fill: var(--bad); animation: ring .3s infinite alternate; transform-origin: 60px 32px; }
+  @keyframes ring { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+  .house #fire { fill: #d8d0c2; }
+  .house #fire.on { fill: #f08c2e; }
+  .house #lid { display: none; }
+  .house #lid.on { display: block; }
+  .house #door.on { fill: var(--bad); }
+  .house #lock-txt { display: none; fill: #fff; font-weight: 700; }
+  .house #lock-txt.on { display: block; }
+  .scen { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+  .scen button { text-align: left; }
+  .scen .row { justify-content: space-between; }
+  .readout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+  .readout div { background: #f6f2ea; border-radius: 8px; padding: 6px 8px; font-size: .85rem; }
+  .readout b { display: block; font-size: 1.2rem; color: var(--ink); }
+  .readout .off { color: var(--muted); }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .acts span { font-size: .8rem; padding: 2px 10px; border-radius: 999px; background: #eee; color: var(--muted); }
+  .acts span.on { background: #f9e0dd; color: var(--bad); font-weight: 600; }
+  .log { max-height: 150px; overflow: auto; font-size: .85rem; background: #fffdf7; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+  .log div { border-bottom: 1px dashed var(--line); padding: 2px 0; }
+  .log .fire { color: var(--accent); font-weight: 600; }
+  .sensor-toggle label { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; margin: 0 14px 6px 0; }
+  .sensor-toggle input { width: auto; }
+  .rule { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; background: #fff; }
+  .rule .line { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: .95rem; }
+  .rule select, .rule input[type=number] { width: auto; padding: 4px 6px; font-size: .9rem; }
+  .rule input[type=number] { width: 72px; }
+  .rule .kw { font-weight: 700; color: var(--accent); }
+  .rule .tools { display: flex; gap: 6px; margin-top: 6px; }
+  .rule .tools button { padding: 3px 10px; font-size: .82rem; }
+  .rule .msg { font-size: .82rem; color: var(--bad); min-height: 1.1em; margin-top: 4px; }
+  .rule .msg.warn { color: var(--warn); }
+  .verdict td.ok { color: var(--ok); font-weight: 600; }
+  .verdict td.bad { color: var(--bad); font-weight: 600; }
+  .overall { margin-top: 8px; font-weight: 600; }
+</style>
+</head>
+<body data-stage="4단계 창작물 만들기" data-who="학생" data-title="늑대 감지 장치 만들기">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 명세(센서 논리를 말로 정의) → 분해(센서·조건·행동) → 검증(세 가지 상황)</div>
+    <p>벽돌집에 센서를 달고 "만약 ~이면 ~한다" 규칙을 만듭니다. 그다음 세 가지 상황을 틀어 봅니다.
+    늑대는 잡아야 하고, 형은 들여보내야 합니다. 규칙을 말로 정하는 것이 곧 이 장치의 명세예요.</p>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h3>벽돌집 (위에서 본 모습)</h3>
+      <svg class="house" viewBox="0 0 340 280" aria-label="벽돌집 평면도">
+        <rect x="0" y="0" width="340" height="280" fill="#efe7d6"/>
+        <rect x="70" y="50" width="200" height="170" rx="4" fill="#b3452f" stroke="#7a2d1c" stroke-width="2"/>
+        <g stroke="#7a2d1c" stroke-width="1" opacity=".5">
+          <line x1="70" y1="70" x2="270" y2="70"/><line x1="70" y1="200" x2="270" y2="200"/>
+          <line x1="90" y1="50" x2="90" y2="70"/><line x1="130" y1="50" x2="130" y2="70"/><line x1="170" y1="50" x2="170" y2="70"/><line x1="210" y1="50" x2="210" y2="70"/>
+          <line x1="110" y1="200" x2="110" y2="220"/><line x1="230" y1="200" x2="230" y2="220"/>
+        </g>
+        <rect x="82" y="72" width="176" height="128" fill="#f6efe2"/>
+        <rect x="96" y="80" width="34" height="26" rx="3" fill="#6b5a4a"/>
+        <circle id="fire" cx="113" cy="93" r="8"/>
+        <text x="96" y="120">솥·벽난로</text>
+        <rect x="226" y="58" width="32" height="32" fill="#4a4f5c"/>
+        <circle cx="242" cy="74" r="10" fill="#1f2229"/>
+        <rect id="lid" x="226" y="58" width="32" height="32" fill="#8a6a3f" stroke="#5a4325"/>
+        <text x="216" y="104">굴뚝</text>
+        <rect id="door" x="150" y="212" width="40" height="10" fill="#8a6a3f"/>
+        <text id="lock-txt" x="156" y="221" font-size="9">잠김</text>
+        <text x="158" y="238">문</text>
+        <g id="bell"><path d="M60 22a8 8 0 0 0-8 8v6l-3 4h22l-3-4v-6a8 8 0 0 0-8-8zm-3 20a3 3 0 0 0 6 0z"/></g>
+        <text x="48" y="56">경보 종</text>
+        <circle id="sens-door" class="sens" cx="170" cy="248" r="6"/><text x="178" y="252">거리 센서</text>
+        <circle id="sens-sound" class="sens" cx="270" cy="212" r="6"/><text x="278" y="216">소리 센서</text>
+        <circle id="sens-chimney" class="sens" cx="266" cy="62" r="6"/><text x="274" y="58">온도 센서</text>
+        <g id="actor"><circle r="14"/><text y="4" id="actor-txt"></text></g>
+      </svg>
+
+      <div class="readout">
+        <div>문 앞 거리<b id="rd-door">-</b><span class="muted">m</span></div>
+        <div>소리<b id="rd-sound">-</b><span class="muted">dB</span></div>
+        <div>굴뚝 온도<b id="rd-chimney">-</b><span class="muted">°C</span></div>
+      </div>
+      <div class="acts" id="acts"></div>
+
+      <div class="scen" id="scen"></div>
+      <div id="run-msg" class="muted" style="font-size:.85rem;min-height:1.2em"></div>
+      <div class="log" id="log"><div class="muted">상황을 고르면 여기에 무슨 일이 일어났는지 적혀요.</div></div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>1. 센서 켜기</h3>
+        <div class="sensor-toggle" id="sensor-toggle"></div>
+        <p class="muted" style="font-size:.85rem;margin:6px 0 0">꺼진 센서는 아무것도 재지 않아요. 규칙에 써도 발동하지 않습니다.</p>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>2. 규칙 만들기 — 이것이 명세예요</h3>
+        <p class="muted" style="font-size:.85rem">"만약 [센서]가 [값] [미만/이상]이면 [행동]". 조건은 두 개까지 붙일 수 있어요(이고).</p>
+        <div id="rules"></div>
+        <div class="row"><button class="secondary" id="add-rule">+ 규칙 추가</button><button class="ghost" id="btn-example">예시 규칙</button><button class="ghost" id="btn-clear">모두 지우기</button></div>
+        <div class="msg" id="rules-msg" style="font-size:.85rem;color:var(--bad);min-height:1.2em;margin-top:6px"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>3. 검증 결과</h3>
+        <table class="verdict">
+          <thead><tr><th>상황</th><th>돼지 안전?</th><th>형 들어옴?</th><th>오작동</th></tr></thead>
+          <tbody id="verdict"></tbody>
+        </table>
+        <div class="overall" id="overall"></div>
+        <div class="muted" id="verdict-text" style="font-size:.88rem;margin-top:6px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 마이크로비트나 아두이노 없이도 "센서 논리"를 먼저 말로 정하게 하는 시뮬레이터입니다. 규칙을 만들고 상황 ①→②→③ 순서로 틀어 봅니다. 규칙 문장을 그대로 읽으면 그것이 장치의 명세입니다 — 센서(입력), 조건(기준값), 행동(출력), 세 상황(성공 조건).
+    관찰 포인트: 상황 ②에서 온도 센서만으로는 차가운 늑대를 못 보는 것을 알아채는가(센서가 무엇을 재는지 분해). 상황 ③은 거짓 양성 검사입니다 — "거리 2m 미만이면 문 잠금"만 있으면 형이 갇힙니다. 늑대는 몰래 오고(소리가 작음) 형은 소리치며 오는 차이를 센서 값에서 읽어 내어 조건 두 개를 붙이는 순간이 명세가 정교해지는 지점입니다.
+    이 앱의 명세 — 기능: ① 센서 3종 켜고 끄기 ② 구조화된 규칙(센서·비교·값·행동, 조건 최대 2개) 만들기 ③ 상황 3개 애니메이션 실행과 센서 실시간 표시 ④ 발동 기록과 판정표(돼지 안전·형 들어옴·오작동). 입력: 센서 스위치, 규칙 행, 상황 버튼. 출력: 집 그림 위 장치 상태, 센서 숫자, 기록, 판정표. 성공 조건: 값이 비거나 숫자가 아니면 규칙 아래에 안내가 뜨고 그 규칙은 발동하지 않는다 / 상황 ②에서 솥 불이 먼저 켜지지 않으면 굴뚝 온도는 20°C를 유지한다 / 상황 ③에서 문 잠금이 발동하면 "형이 문 밖에 갇혔어요"가 나온다 / 새로고침해도 규칙이 남아 있다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const KEY = "ne4.sensor-logic";
+  const DURATION = 6000;
+  const ARRIVE_P = 9 / 9.5;      // 문 앞 거리 1m 미만이 되는 순간
+  const ENTER_P = 5 / 6;         // 늑대가 굴뚝 안으로 들어가는 순간
+  const MAX_RULES = 8;
+  const SENSORS = {
+    door: { name: "문 앞 거리 센서", unit: "m", min: 0, max: 10, step: 0.5 },
+    sound: { name: "소리 센서", unit: "dB", min: 0, max: 120, step: 5 },
+    chimney: { name: "굴뚝 온도 센서", unit: "°C", min: -10, max: 200, step: 5 }
+  };
+  const OPS = { lt: "미만", ge: "이상" };
+  const ACTIONS = { bell: "경보 종 울리기", lock: "문 잠그기", fire: "솥 불 켜기", lid: "굴뚝 뚜껑 닫기" };
+  const ACTION_SHORT = { bell: "경보 종", lock: "문 잠금", fire: "솥 불", lid: "굴뚝 뚜껑" };
+  const NO_ACT = { bell: null, lock: null, fire: null, lid: null };
+  const EXAMPLE_RULES = [
+    { id: "r1", conds: [{ sensor: "door", op: "lt", value: "2" }], action: "lock" },
+    { id: "r2", conds: [{ sensor: "chimney", op: "ge", value: "60" }], action: "lid" }
+  ];
+  const wolfVoice = (p) => p < 0.85 ? 40 + 10 * (p / 0.85) : 50 + 20 * ((p - 0.85) / 0.15);
+  const chimneyTemp = (p, act) => act.fire === null ? 20 : Math.min(95, 20 + (p - act.fire) * (DURATION / 1000) * 15);
+  const SCENARIOS = [
+    { id: "wolfDoor", title: "① 늑대가 문으로 다가온다", actor: "늑대", cls: "wolf", path: "door", evidence: [16, 17],
+      marks: [{ p: ARRIVE_P, text: "늑대가 문 앞에 섰어요. \"문 좀 열어 다오.\"" }],
+      sample: (p, act) => ({ door: 10 - 9.5 * p, sound: wolfVoice(p), chimney: chimneyTemp(p, act) }) },
+    { id: "wolfChimney", title: "② 늑대가 굴뚝으로 들어온다", actor: "늑대", cls: "wolf", path: "chimney", evidence: [40, 42],
+      marks: [{ p: ENTER_P, text: "늑대가 굴뚝 안으로 내려가요." }],
+      sample: (p, act) => ({ door: 8, sound: 40 + 15 * p, chimney: chimneyTemp(p, act) }) },
+    { id: "brother", title: "③ 첫째 형이 문으로 뛰어온다", actor: "형", cls: "bro", path: "door", evidence: [21],
+      marks: [{ p: ARRIVE_P, text: "형이 문 앞에 왔어요. \"나야, 열어 줘!\"" }],
+      sample: (p, act) => ({ door: 10 - 9.5 * p, sound: 60 + 15 * p, chimney: chimneyTemp(p, act) }) }
+  ];
+  const PATHS = { door: { from: [20, 262], to: [170, 236] }, chimney: { from: [322, 20], to: [242, 74] } };
+
+  // ---------- 상태 ----------
+  function normalizeCond(raw) {
+    const c = raw && typeof raw === "object" ? raw : {};
+    return { sensor: SENSORS[c.sensor] ? c.sensor : "door", op: OPS[c.op] ? c.op : "lt", value: typeof c.value === "string" ? c.value : String(c.value === undefined || c.value === null ? "" : c.value) };
+  }
+  function normalizeRule(raw) {
+    const r = raw && typeof raw === "object" ? raw : {};
+    const conds = (Array.isArray(r.conds) ? r.conds : []).slice(0, 2).map(normalizeCond);
+    return { id: typeof r.id === "string" && r.id ? r.id : NE.uid(), conds: conds.length ? conds : [normalizeCond(null)], action: ACTIONS[r.action] ? r.action : "bell" };
+  }
+  function normalize(raw) {
+    const s = raw && typeof raw === "object" ? raw : {};
+    const sen = s.sensors && typeof s.sensors === "object" ? s.sensors : {};
+    return { sensors: { door: sen.door !== false, sound: sen.sound !== false, chimney: sen.chimney !== false },
+      rules: (Array.isArray(s.rules) ? s.rules : []).slice(0, MAX_RULES).map(normalizeRule) };
+  }
+  let state = normalize(NE.load(KEY, null));
+  let results = { wolfDoor: null, wolfChimney: null, brother: null };
+  let running = false;
+
+  function setState(next, keepResults) {
+    state = next;
+    if (!NE.save(KEY, state)) document.getElementById("rules-msg").textContent = "저장이 안 됐어요. 브라우저 저장 공간을 확인해 주세요.";
+    if (!keepResults) { results = { wolfDoor: null, wolfChimney: null, brother: null }; renderVerdict(); }
+  }
+  function updateRule(id, patch) { setState(Object.assign({}, state, { rules: state.rules.map(r => r.id === id ? Object.assign({}, r, patch) : r) })); }
+  function updateCond(id, ci, patch) {
+    const rule = state.rules.find(r => r.id === id);
+    updateRule(id, { conds: rule.conds.map((c, i) => i === ci ? Object.assign({}, c, patch) : c) });
+  }
+
+  // ---------- 규칙 검사 ----------
+  function condError(c) {
+    const s = SENSORS[c.sensor];
+    if (c.value.trim() === "") return "값을 적어 주세요.";
+    const v = Number(c.value);
+    if (!Number.isFinite(v)) return "숫자만 적어 주세요.";
+    if (v < s.min || v > s.max) return s.name + " 값은 " + s.min + "~" + s.max + s.unit + " 사이여야 해요.";
+    return "";
+  }
+  function ruleError(r) { return r.conds.map(condError).find(e => e) || ""; }
+  function ruleWarning(r) {
+    const off = r.conds.filter(c => !state.sensors[c.sensor]).map(c => SENSORS[c.sensor].name);
+    return off.length ? off.join(", ") + "가 꺼져 있어요. 이 규칙은 발동하지 않아요." : "";
+  }
+  function ruleText(r, idx) {
+    const cond = (c) => SENSORS[c.sensor].name + " " + c.value + SENSORS[c.sensor].unit + " " + OPS[c.op];
+    return "규칙 " + (idx + 1) + " (만약 " + r.conds.map(cond).join(" 이고 ") + " 이면 " + ACTIONS[r.action] + ")";
+  }
+
+  // ---------- 규칙 UI ----------
+  function condNode(rule, ci) {
+    const c = rule.conds[ci];
+    const sensorSel = NE.el("select", {});
+    Object.keys(SENSORS).forEach(k => sensorSel.appendChild(NE.el("option", { value: k, text: SENSORS[k].name })));
+    sensorSel.value = c.sensor;
+    const unit = NE.el("span", { class: "muted", text: SENSORS[c.sensor].unit });
+    const val = NE.el("input", { type: "number", step: String(SENSORS[c.sensor].step), placeholder: "값" });
+    val.value = c.value;
+    const opSel = NE.el("select", {});
+    Object.keys(OPS).forEach(k => opSel.appendChild(NE.el("option", { value: k, text: OPS[k] })));
+    opSel.value = c.op;
+    sensorSel.addEventListener("change", () => { updateCond(rule.id, ci, { sensor: sensorSel.value }); renderRules(); });
+    val.addEventListener("input", () => { updateCond(rule.id, ci, { value: val.value }); refreshRuleMsg(rule.id); });
+    opSel.addEventListener("change", () => updateCond(rule.id, ci, { op: opSel.value }));
+    const parts = [ci === 0 ? NE.el("span", { class: "kw", text: "만약" }) : NE.el("span", { class: "kw", text: "이고" }), sensorSel, "가", val, unit, opSel];
+    return NE.el("span", { class: "line" }, parts);
+  }
+  function ruleNode(rule, idx) {
+    const actSel = NE.el("select", {});
+    Object.keys(ACTIONS).forEach(k => actSel.appendChild(NE.el("option", { value: k, text: ACTIONS[k] })));
+    actSel.value = rule.action;
+    actSel.addEventListener("change", () => updateRule(rule.id, { action: actSel.value }));
+    const line = NE.el("div", { class: "line" }, [NE.el("b", { text: (idx + 1) + "." })]);
+    rule.conds.forEach((_, ci) => line.appendChild(condNode(rule, ci)));
+    line.appendChild(NE.el("span", { class: "kw", text: "이면" }));
+    line.appendChild(actSel);
+    const tools = NE.el("div", { class: "tools" });
+    if (rule.conds.length < 2) tools.appendChild(NE.el("button", { class: "ghost", text: "+ 조건 붙이기(이고)", onclick: () => { updateRule(rule.id, { conds: rule.conds.concat([normalizeCond({ sensor: "sound" })]) }); renderRules(); } }));
+    else tools.appendChild(NE.el("button", { class: "ghost", text: "둘째 조건 빼기", onclick: () => { updateRule(rule.id, { conds: rule.conds.slice(0, 1) }); renderRules(); } }));
+    tools.appendChild(NE.el("button", { class: "ghost", text: "규칙 삭제", onclick: () => { setState(Object.assign({}, state, { rules: state.rules.filter(r => r.id !== rule.id) })); renderRules(); } }));
+    return NE.el("div", { class: "rule", id: "rule-" + rule.id }, [line, tools, NE.el("div", { class: "msg" })]);
+  }
+  function refreshRuleMsg(id) {
+    const rule = state.rules.find(r => r.id === id);
+    const node = document.getElementById("rule-" + id);
+    if (!rule || !node) return;
+    const msg = node.querySelector(".msg");
+    const err = ruleError(rule), warn = ruleWarning(rule);
+    msg.className = "msg" + (err ? "" : " warn");
+    msg.textContent = err || warn;
+  }
+  function renderRules() {
+    const box = document.getElementById("rules");
+    box.innerHTML = "";
+    if (state.rules.length === 0) box.appendChild(NE.el("p", { class: "muted", text: "규칙이 없어요. 규칙이 없으면 장치는 아무것도 하지 않아요." }));
+    state.rules.forEach((r, i) => box.appendChild(ruleNode(r, i)));
+    state.rules.forEach(r => refreshRuleMsg(r.id));
+    document.getElementById("add-rule").disabled = state.rules.length >= MAX_RULES;
+    document.getElementById("rules-msg").textContent = state.rules.length >= MAX_RULES ? "규칙은 " + MAX_RULES + "개까지예요." : "";
+  }
+  function renderSensorToggle() {
+    const box = document.getElementById("sensor-toggle");
+    box.innerHTML = "";
+    Object.keys(SENSORS).forEach(k => {
+      const cb = NE.el("input", { type: "checkbox" });
+      cb.checked = state.sensors[k];
+      cb.addEventListener("change", () => {
+        setState(Object.assign({}, state, { sensors: Object.assign({}, state.sensors, { [k]: cb.checked }) }));
+        renderSensorMarks(); state.rules.forEach(r => refreshRuleMsg(r.id));
+      });
+      box.appendChild(NE.el("label", {}, [cb, SENSORS[k].name + " (" + SENSORS[k].unit + ")"]));
+    });
+    renderSensorMarks();
+  }
+  function renderSensorMarks() {
+    Object.keys(SENSORS).forEach(k => document.getElementById("sens-" + k).classList.toggle("on", state.sensors[k]));
+  }
+
+  // ---------- 시뮬레이션 ----------
+  function condHolds(c, readings) {
+    if (!state.sensors[c.sensor]) return false;
+    const v = readings[c.sensor], t = Number(c.value);
+    return c.op === "lt" ? v < t : v >= t;
+  }
+  function fmtTime(p) { return (p * DURATION / 1000).toFixed(1) + "초"; }
+  function evaluate(run, readings, p) {
+    return state.rules.reduce((acc, rule, idx) => {
+      if (acc.fired.includes(rule.id) || ruleError(rule) || !rule.conds.every(c => condHolds(c, readings))) return acc;
+      const already = acc.act[rule.action] !== null;
+      return Object.assign({}, acc, {
+        fired: acc.fired.concat([rule.id]),
+        act: already ? acc.act : Object.assign({}, acc.act, { [rule.action]: p }),
+        log: acc.log.concat([{ fire: true, text: fmtTime(p) + " " + ruleText(rule, idx) + " 발동 → " + ACTIONS[rule.action] + (already ? " (이미 켜져 있음)" : "") }])
+      });
+    }, run);
+  }
+  function passMarks(run, sc, p) {
+    const due = sc.marks.filter(m => p >= m.p && !run.marked.includes(m.p));
+    if (!due.length) return run;
+    return Object.assign({}, run, { marked: run.marked.concat(due.map(m => m.p)), log: run.log.concat(due.map(m => ({ fire: false, text: fmtTime(m.p) + " " + m.text }))) });
+  }
+  function startScenario(sc) {
+    if (running) return;
+    const broken = state.rules.map((r, i) => ruleError(r) ? "규칙 " + (i + 1) : "").filter(Boolean);
+    document.getElementById("run-msg").textContent = broken.length ? broken.join(", ") + "에 값이 잘못돼 건너뛰어요." : "";
+    running = true;
+    document.querySelectorAll("#scen button").forEach(b => { b.disabled = true; });
+    let run = { act: NO_ACT, fired: [], marked: [], log: [{ fire: false, text: "0.0초 " + sc.title + " 시작" }] };
+    const t0 = performance.now();
+    const frame = (now) => {
+      const p = Math.min(1, (now - t0) / DURATION);
+      const readings = sc.sample(p, run.act);
+      run = passMarks(evaluate(run, readings, p), sc, p);
+      draw(sc, p, readings, run);
+      if (p < 1) { requestAnimationFrame(frame); return; }
+      finish(sc, run);
+    };
+    requestAnimationFrame(frame);
+  }
+  function finish(sc, run) {
+    running = false;
+    document.querySelectorAll("#scen button").forEach(b => { b.disabled = false; });
+    results = Object.assign({}, results, { [sc.id]: verdict(sc, run) });
+    renderVerdict();
+    document.getElementById("verdict-text").textContent = sc.title + " — " + results[sc.id].text;
+  }
+  function verdict(sc, run) {
+    const before = (a, p) => run.act[a] !== null && run.act[a] <= p;
+    if (sc.id === "wolfDoor") {
+      const ok = before("bell", ARRIVE_P) || before("lock", ARRIVE_P);
+      const text = ok ? [before("lock", ARRIVE_P) ? "문이 먼저 잠겼어요." : "", before("bell", ARRIVE_P) ? "종이 울려 돼지들이 깼어요." : ""].filter(Boolean).join(" ")
+        : "늑대가 문 앞에 왔는데 아무도 몰랐어요. 늑대가 오기 전에 종이나 문 잠금이 필요해요.";
+      return { safe: ok, brother: null, faults: 0, text };
+    }
+    if (sc.id === "wolfChimney") {
+      if (before("lid", ENTER_P)) return { safe: true, brother: null, faults: 0, text: "굴뚝 뚜껑이 먼저 닫혀 늑대가 못 들어왔어요." };
+      if (before("fire", ENTER_P)) return { safe: true, brother: null, faults: 0, text: "늑대가 굴뚝으로 내려오다 끓는 솥에 빠졌어요." };
+      const late = run.act.fire !== null || run.act.lid !== null ? " 솥 불이나 뚜껑은 늑대가 들어온 뒤에야 움직였어요." : "";
+      return { safe: false, brother: null, faults: 0, text: "늑대가 굴뚝으로 들어왔어요. 굴뚝 온도는 계속 20°C였어요 — 차가운 늑대는 온도 센서에 안 보여요. 다른 센서로 먼저 솥 불을 켜야 온도가 올라가요." + late };
+    }
+    const locked = run.act.lock !== null, bell = run.act.bell !== null;
+    const text = locked ? "형이 문 밖에 갇혔어요. 규칙이 형을 늑대로 봤어요. 형은 소리치며 오고 늑대는 조용히 와요 — 소리 센서를 조건에 붙여 볼까요?"
+      : bell ? "형이 들어왔지만 종이 울렸어요(헛경보). 돼지들이 놀랐겠죠." : "형이 들어왔어요. 종도 조용했어요.";
+    return { safe: true, brother: !locked, faults: (locked ? 1 : 0) + (bell ? 1 : 0), text };
+  }
+
+  // ---------- 그리기 ----------
+  function draw(sc, p, readings, run) {
+    const path = PATHS[sc.path];
+    const x = path.from[0] + (path.to[0] - path.from[0]) * p, y = path.from[1] + (path.to[1] - path.from[1]) * p;
+    const actor = document.getElementById("actor");
+    actor.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ")");
+    actor.setAttribute("class", "show " + sc.cls);
+    document.getElementById("actor-txt").textContent = sc.actor;
+    if (sc.path === "chimney" && p >= ENTER_P && run.act.lid === null) actor.setAttribute("class", sc.cls);
+    Object.keys(SENSORS).forEach(k => {
+      const node = document.getElementById("rd-" + k);
+      node.textContent = state.sensors[k] ? readings[k].toFixed(k === "door" ? 1 : 0) : "꺼짐";
+      node.className = state.sensors[k] ? "" : "off";
+    });
+    document.getElementById("bell").setAttribute("class", run.act.bell !== null ? "on" : "");
+    document.getElementById("fire").setAttribute("class", run.act.fire !== null ? "on" : "");
+    document.getElementById("lid").setAttribute("class", run.act.lid !== null ? "on" : "");
+    document.getElementById("door").setAttribute("class", run.act.lock !== null ? "on" : "");
+    document.getElementById("lock-txt").setAttribute("class", run.act.lock !== null ? "on" : "");
+    renderActs(run.act);
+    const log = document.getElementById("log");
+    log.innerHTML = "";
+    run.log.forEach(l => log.appendChild(NE.el("div", { class: l.fire ? "fire" : "", text: l.text })));
+    log.scrollTop = log.scrollHeight;
+  }
+  function renderActs(act) {
+    const box = document.getElementById("acts");
+    box.innerHTML = "";
+    Object.keys(ACTIONS).forEach(k => box.appendChild(NE.el("span", { class: act[k] !== null ? "on" : "", text: ACTION_SHORT[k] + (act[k] !== null ? " 켜짐" : " 꺼짐") })));
+  }
+  function renderScenarios() {
+    const box = document.getElementById("scen");
+    SCENARIOS.forEach(sc => {
+      const row = NE.el("div", { class: "row" }, [NE.el("button", { class: "secondary", text: sc.title + " ▶", onclick: () => startScenario(sc) })]);
+      sc.evidence.forEach(id => row.appendChild(NE.evidenceBadge(id)));
+      box.appendChild(row);
+    });
+  }
+  function renderVerdict() {
+    const tb = document.getElementById("verdict");
+    tb.innerHTML = "";
+    const yn = (v) => v === null ? NE.el("td", { class: "muted", text: "—" }) : NE.el("td", { class: v ? "ok" : "bad", text: v ? "예" : "아니요" });
+    SCENARIOS.forEach(sc => {
+      const r = results[sc.id];
+      tb.appendChild(r ? NE.el("tr", {}, [NE.el("td", { text: sc.title }), yn(r.safe), yn(r.brother), NE.el("td", { class: r.faults ? "bad" : "", text: r.faults + "회" })])
+        : NE.el("tr", {}, [NE.el("td", { text: sc.title }), NE.el("td", { class: "muted", text: "아직" }), NE.el("td", { class: "muted", text: "아직" }), NE.el("td", { class: "muted", text: "아직" })]));
+    });
+    const all = SCENARIOS.every(sc => results[sc.id]);
+    const good = all && SCENARIOS.every(sc => results[sc.id].safe && results[sc.id].brother !== false && results[sc.id].faults === 0);
+    const box = document.getElementById("overall");
+    box.innerHTML = "";
+    box.appendChild(NE.el("span", { class: "badge " + (good ? "ok" : all ? "bad" : "warn"), text: good ? "세 상황 모두 통과" : all ? "고칠 곳이 있어요" : "세 상황을 모두 틀어 보세요" }));
+    if (!all) document.getElementById("verdict-text").textContent = "규칙을 바꾸면 결과는 지워져요. 다시 틀어서 확인해요.";
+  }
+
+  function bind() {
+    document.getElementById("add-rule").addEventListener("click", () => {
+      if (state.rules.length >= MAX_RULES) return;
+      setState(Object.assign({}, state, { rules: state.rules.concat([normalizeRule(null)]) })); renderRules();
+    });
+    document.getElementById("btn-example").addEventListener("click", () => {
+      if (state.rules.length && !confirm("지금 규칙을 예시로 바꿀까요?")) return;
+      setState(Object.assign({}, state, { rules: EXAMPLE_RULES.map(normalizeRule) })); renderRules();
+      document.getElementById("rules-msg").textContent = "예시 규칙은 일부러 빈틈이 있어요. 상황 ②와 ③을 틀어 보세요.";
+    });
+    document.getElementById("btn-clear").addEventListener("click", () => {
+      if (!confirm("규칙을 모두 지울까요?")) return;
+      setState(Object.assign({}, state, { rules: [] })); renderRules();
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    bind(); renderSensorToggle(); renderRules(); renderScenarios(); renderActs(NO_ACT); renderVerdict();
+  });
+})();
+</script>
+</body>
+</html>

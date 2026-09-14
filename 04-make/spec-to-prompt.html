@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>명세 → 프롬프트 → 실행 → 검증 — 노벨 엔지니어링 × 바이브코딩</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/style.css">
+<style>
+  .progress { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px; }
+  .progress .seg { padding: 8px 6px; text-align: center; border-radius: 8px; background: #efe9dd; color: var(--muted); font-size: .9rem; font-weight: 600; }
+  .progress .seg.done { background: #e3f3e8; color: var(--ok); }
+  .progress .seg.now { background: var(--accent); color: #fff; }
+  .step { display: none; }
+  .step.show { display: block; }
+  .nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .msg { font-size: .88rem; color: var(--bad); min-height: 1.2em; margin: 4px 0; }
+  .msg.ok { color: var(--ok); }
+  .list-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .list-row .idx { width: 22px; color: var(--muted); text-align: right; font-size: .85rem; }
+  .list-row input { flex: 1; }
+  #prompt-out { min-height: 280px; font-family: ui-monospace, Consolas, monospace; font-size: .85rem; }
+  #html-in { min-height: 160px; font-family: ui-monospace, Consolas, monospace; font-size: .82rem; }
+  #frame { width: 100%; height: 380px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  .vcard textarea { min-height: 52px; font-size: .92rem; }
+  .vcard select { width: auto; }
+  .vcard.pass { background: #f4faf6; }
+  .vcard.fail { background: #fdf3f2; }
+  .loop { margin-top: 12px; border-left: 4px solid var(--warn); background: #fff; padding: 10px 14px; border-radius: 0 10px 10px 0; }
+  .loop-count { font-weight: 700; color: var(--warn); }
+  .instruction { background: #fffdf7; border: 1px dashed var(--straw); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+</style>
+</head>
+<body data-stage="4단계 창작물 만들기" data-who="학생" data-title="명세 → 프롬프트 → 실행 → 검증">
+<div class="wrap">
+  <div class="intro">
+    <div class="thinking">요구 사고 · 명세(정의) → 검증 → 되돌아가기(메타인지)</div>
+    <p>내가 만들 것을 정하고(명세), AI에게 보낼 글로 바꾸고(프롬프트), AI가 준 코드를 여기서 실행하고, 세 가지 경우로 확인합니다(검증).
+    실패하면 명세로 돌아갈지 프롬프트를 고칠지 내가 정합니다. 몇 바퀴 돌았는지 세어 둡니다.</p>
+  </div>
+
+  <div class="progress" id="progress"></div>
+
+  <!-- 1단계 명세 -->
+  <div class="step card" id="step-1">
+    <h2>1단계 · 명세</h2>
+    <p class="muted">짧게. 하지만 확인할 수 있게.</p>
+    <div class="field"><label for="s-name">만들 것 이름</label><input type="text" id="s-name" placeholder="예: 늑대 경보 종"></div>
+    <div class="field"><label for="s-who">누구를 위해</label><select id="s-who"></select></div>
+    <div class="field"><label>기능 (1~3개)</label><div id="list-features"></div></div>
+    <div class="field"><label>성공 조건 (3개 모두)</label><p class="muted" style="font-size:.85rem;margin:0 0 6px">"~이면 ~한다"처럼, 숫자를 넣어서.</p><div id="list-success"></div></div>
+    <div class="msg" id="msg-1"></div>
+    <div class="nav"><button class="secondary" id="btn-example-spec">예시 명세 채우기</button><button id="next-1">다음: 프롬프트</button></div>
+  </div>
+
+  <!-- 2단계 프롬프트 -->
+  <div class="step card" id="step-2">
+    <h2>2단계 · 프롬프트</h2>
+    <p class="muted">명세가 그대로 글이 됐어요. 고치고 싶으면 1단계로 돌아가 명세를 고칩니다.</p>
+    <textarea id="prompt-out" readonly></textarea>
+    <div class="row" style="margin-top:8px"><button class="secondary" id="btn-copy">프롬프트 복사</button><span class="msg ok" id="copy-msg" style="margin:0"></span></div>
+    <div class="instruction">이 프롬프트를 AI(클로드, 제미나이 등)에 붙여 넣고, 돌아온 HTML 코드를 <b>전부</b> 복사해 오세요. 선생님과 함께 해도 좋아요.</div>
+    <div class="nav"><button class="ghost" id="back-2">← 명세</button><button id="next-2">다음: 실행</button></div>
+  </div>
+
+  <!-- 3단계 실행 -->
+  <div class="step card" id="step-3">
+    <h2>3단계 · 실행</h2>
+    <p class="muted">AI가 준 HTML 코드를 아래에 붙여 넣고 "실행"을 누릅니다. AI가 없으면 "예시 코드 불러오기"로 해 볼 수 있어요.</p>
+    <textarea id="html-in" placeholder="&lt;!DOCTYPE html&gt; 부터 &lt;/html&gt; 까지 전부 붙여 넣어요."></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="btn-run">실행</button>
+      <button class="secondary" id="btn-example-code">예시 코드 불러오기</button>
+      <span class="msg" id="run-msg" style="margin:0"></span>
+    </div>
+    <iframe id="frame" sandbox="allow-scripts" title="실행 결과"></iframe>
+    <div class="nav"><button class="ghost" id="back-3">← 프롬프트</button><button id="next-3">다음: 검증</button></div>
+  </div>
+
+  <!-- 4단계 검증 -->
+  <div class="step card" id="step-4">
+    <h2>4단계 · 검증</h2>
+    <p class="muted">"예상"을 먼저 적고, 3단계 화면에서 해 본 다음 "실제"를 적어요. 명세의 성공 조건과 비교합니다.</p>
+    <div class="row" style="margin-bottom:10px"><button class="secondary" id="btn-suggest">카드 제안</button><span class="muted" style="font-size:.85rem">성공 조건에서 카드를 만들어 줘요.</span></div>
+    <div class="grid three" id="cards"></div>
+    <div style="margin-top:14px;font-size:1.1rem;font-weight:600"><span id="sum-text">3개 중 0개 통과</span> <span class="badge" id="sum-badge">아직</span></div>
+    <p class="msg" id="msg-4"></p>
+    <div class="loop" id="loop" hidden>
+      <p><b>실패한 카드가 있어요.</b> 예상이 틀렸거나 애매했다면 명세를, 예상은 맞는데 AI가 다르게 만들었다면 프롬프트를 고칩니다.</p>
+      <div class="row"><button id="btn-to-spec">명세로 돌아가기</button><button class="secondary" id="btn-to-prompt">프롬프트 고치기</button></div>
+    </div>
+    <p class="loop-count" id="loop-count" style="margin:10px 0 0"></p>
+    <ul class="muted" id="loop-log" style="font-size:.85rem;margin:4px 0 0;padding-left:18px"></ul>
+    <div class="nav"><button class="ghost" id="back-4">← 실행</button><button class="ghost" id="btn-restart">처음부터 새로</button></div>
+  </div>
+
+  <div class="teacher-note"><b>교사 노트.</b>
+    수업 사용법: 학생 한 명(또는 모둠)이 명세를 채우면 2단계 프롬프트를 교사 계정의 AI에 붙여 넣고, 돌아온 코드를 학생이 3단계에 붙여 실행합니다. 실행 화면은 격리된 틀(sandbox) 안에서만 돌아가므로 이 페이지의 저장 데이터에 닿지 못합니다. 4단계에서 실패가 나오면 학생이 "명세로 돌아가기"와 "프롬프트 고치기" 중 하나를 고르게 하고, 바퀴 수를 함께 봅니다.
+    관찰 포인트: 1단계에서 성공 조건에 숫자를 넣는가. 4단계에서 "예상"을 먼저 적는가, 결과를 보고 예상을 바꾸지는 않는가. 실패의 원인을 명세 쪽으로 돌리는지 AI 쪽으로 돌리는지 — 이것이 메타인지의 갈림길입니다.
+    이 앱의 명세 — 기능: ① 짧은 명세 입력(이름·인물·기능 3·성공 조건 3) ② 프롬프트 자동 생성·복사 ③ 붙여 넣은 HTML을 격리된 틀에서 실행 ④ 예시 코드 내장 ⑤ 검증 카드 3장과 되돌아가기 바퀴 수 기록. 입력: 명세 칸, HTML 텍스트, 카드 입력·예상·실제·결과. 출력: 프롬프트 텍스트, 실행 화면, "3개 중 N개 통과", "지금까지 N바퀴 돌았어요". 성공 조건: 성공 조건 3개가 비면 2단계로 못 넘어간다 / HTML 표시가 없는 글을 실행하면 안내가 뜬다 / 실패 카드가 있으면 되돌아가기 버튼 2개가 나타나고 누르면 바퀴 수가 1 늘어난다 / 새로고침해도 단계와 입력이 남아 있다.
+  </div>
+</div>
+<script src="../shared/story.js"></script>
+<script src="../shared/ui.js"></script>
+<script>
+(function () {
+  const KEY = "ne4.spec-to-prompt";
+  const STEPS = ["명세", "프롬프트", "실행", "검증"];
+  const CARD_LABELS = ["보통 경우", "경계 경우", "이상한 입력"];
+  const RESULTS = ["아직", "통과", "실패"];
+  const HTML_MARK = /<html|<body|<script/i;
+  const EMPTY_CARD = { input: "", expect: "", actual: "", result: "아직" };
+  const EMPTY = { step: 1, spec: { name: "", who: "third", features: ["", "", ""], success: ["", "", ""] }, html: "", ran: false, cards: [EMPTY_CARD, EMPTY_CARD, EMPTY_CARD], loops: 0, history: [] };
+  const EXAMPLE_SPEC = { name: "늑대 경보 종", who: "third",
+    features: ["늑대 거리를 슬라이더로 정한다", "거리가 2m 미만이면 종이 빨개지고 '땡땡!'이 뜬다", "거리가 2m 이상이면 조용하다"],
+    success: ["거리를 1m로 하면 '땡땡!'이 보인다", "거리를 정확히 2m로 하면 조용하다", "거리를 9m로 하면 조용하다"] };
+  const SUGGEST_CARDS = [
+    { input: "거리를 1m로 맞춘다", expect: "종이 빨개지고 '땡땡!'이 보인다" },
+    { input: "거리를 정확히 2.0m로 맞춘다", expect: "조용하다 (2m '미만'이 기준이니까)" },
+    { input: "거리를 0m로 맞춘다", expect: "'땡땡!'이 보인다. 0도 2m 미만이니까" }
+  ];
+  const EXAMPLE_HTML = [
+    '<!DOCTYPE html>', '<html lang="ko">', '<head><meta charset="utf-8"><title>늑대 경보 종</title>',
+    '<style>',
+    '  body { font-family: sans-serif; text-align: center; padding: 24px; background: #fbf8f2; color: #2b2620; }',
+    '  .bell { width: 90px; height: 90px; margin: 12px auto; color: #8a6a3f; transition: transform .15s; }',
+    '  .bell.ring { color: #c0392b; transform: rotate(-18deg); }',
+    '  #msg { font-size: 30px; font-weight: bold; color: #c0392b; height: 44px; }',
+    '  input[type=range] { width: 80%; max-width: 420px; }',
+    '</style></head>', '<body>',
+    '<h1>늑대 경보 종</h1>',
+    '<p>늑대 거리: <b id="d">10.0</b> m</p>',
+    '<input id="dist" type="range" min="0" max="10" step="0.1" value="10">',
+    '<svg class="bell" id="bell" viewBox="0 0 24 24"><path d="M12 2a6 6 0 0 0-6 6v4l-2 3h16l-2-3V8a6 6 0 0 0-6-6zm-2 16a2 2 0 0 0 4 0z" fill="currentColor"/></svg>',
+    '<div id="msg"></div>',
+    '<p style="color:#6f675d">2m 미만이면 종이 울립니다.</p>',
+    '<script>',
+    '  var LIMIT = 2;',
+    '  var dist = document.getElementById("dist");',
+    '  function update() {',
+    '    var d = Number(dist.value);',
+    '    document.getElementById("d").textContent = d.toFixed(1);',
+    '    var near = d < LIMIT;',
+    '    document.getElementById("bell").setAttribute("class", near ? "bell ring" : "bell");',
+    '    document.getElementById("msg").textContent = near ? "땡땡!" : "";',
+    '  }',
+    '  dist.addEventListener("input", update);',
+    '  update();',
+    '<\/script>', '</body>', '</html>'
+  ].join("\n");
+
+  function normalize(raw) {
+    const s = raw && typeof raw === "object" ? raw : {};
+    const sp = s.spec && typeof s.spec === "object" ? s.spec : {};
+    const three = (arr) => [0, 1, 2].map(i => Array.isArray(arr) && typeof arr[i] === "string" ? arr[i] : "");
+    const cards = Array.isArray(s.cards) ? s.cards : [];
+    const str = (v) => typeof v === "string" ? v : "";
+    return {
+      step: [1, 2, 3, 4].includes(s.step) ? s.step : 1,
+      spec: { name: str(sp.name), who: STORY.characters.some(c => c.id === sp.who) ? sp.who : "third", features: three(sp.features), success: three(sp.success) },
+      html: str(s.html), ran: s.ran === true,
+      cards: [0, 1, 2].map(i => { const c = cards[i] && typeof cards[i] === "object" ? cards[i] : {}; return { input: str(c.input), expect: str(c.expect), actual: str(c.actual), result: RESULTS.includes(c.result) ? c.result : "아직" }; }),
+      loops: Number.isInteger(s.loops) && s.loops >= 0 ? s.loops : 0,
+      history: Array.isArray(s.history) ? s.history.filter(h => h && typeof h.to === "string") : []
+    };
+  }
+
+  let state = normalize(NE.load(KEY, EMPTY));
+  function setState(next) { state = next; if (!NE.save(KEY, state)) document.getElementById("msg-1").textContent = "저장이 안 됐어요. 브라우저 저장 공간을 확인해 주세요."; }
+  function setSpec(patch) { setState(Object.assign({}, state, { spec: Object.assign({}, state.spec, patch) })); }
+  function setList(key, idx, value) { setSpec({ [key]: state.spec[key].map((v, i) => i === idx ? value : v) }); }
+  function nonEmpty(arr) { return arr.filter(v => v.trim() !== ""); }
+
+  // ---------- 진행 표시와 단계 전환 ----------
+  function renderProgress() {
+    const box = document.getElementById("progress");
+    box.innerHTML = "";
+    STEPS.forEach((name, i) => {
+      const n = i + 1;
+      box.appendChild(NE.el("div", { class: "seg" + (n < state.step ? " done" : n === state.step ? " now" : ""), text: n + ". " + name }));
+    });
+    [1, 2, 3, 4].forEach(n => document.getElementById("step-" + n).classList.toggle("show", n === state.step));
+  }
+  function goTo(step) {
+    setState(Object.assign({}, state, { step }));
+    if (step === 2) document.getElementById("prompt-out").value = composePrompt(state.spec);
+    if (step === 3) renderRun();
+    if (step === 4) renderCards();
+    renderProgress();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ---------- 1단계 ----------
+  function renderList(key, placeholder) {
+    const box = document.getElementById("list-" + key);
+    box.innerHTML = "";
+    state.spec[key].forEach((val, i) => {
+      const input = NE.el("input", { type: "text", placeholder: placeholder[i] || placeholder[0] });
+      input.value = val;
+      input.addEventListener("input", () => setList(key, i, input.value));
+      box.appendChild(NE.el("div", { class: "list-row" }, [NE.el("span", { class: "idx", text: (i + 1) + "." }), input]));
+    });
+  }
+  function renderSpecForm() {
+    document.getElementById("s-name").value = state.spec.name;
+    const who = document.getElementById("s-who");
+    who.innerHTML = "";
+    STORY.characters.forEach(c => who.appendChild(NE.el("option", { value: c.id, text: c.name + " — " + c.role })));
+    who.value = state.spec.who;
+    renderList("features", ["예: 늑대 거리를 슬라이더로 정한다", "예: 2m 미만이면 종이 울린다", "(비워도 돼요)"]);
+    renderList("success", ["예: 거리를 1m로 하면 '땡땡!'이 보인다", "예: 정확히 2m면 조용하다", "예: 9m면 조용하다"]);
+  }
+  function validateSpec() {
+    const s = state.spec;
+    if (!s.name.trim()) return "만들 것 이름을 적어 주세요.";
+    if (nonEmpty(s.features).length === 0) return "기능을 하나는 적어 주세요.";
+    if (nonEmpty(s.success).length < 3) return "성공 조건 3개를 모두 적어 주세요. (지금 " + nonEmpty(s.success).length + "개)";
+    const weak = s.success.findIndex(c => !/\d/.test(c) && !/(이면|하면|되면|라면|으면|때)/.test(c));
+    if (weak >= 0) return "성공 조건 " + (weak + 1) + "에 숫자도 '~이면'도 없어요. 어떻게 확인하죠?";
+    return "";
+  }
+
+  // ---------- 2단계 ----------
+  function composePrompt(s) {
+    const who = STORY.characters.find(c => c.id === s.who);
+    const threat = STORY.constraints.filter(c => ["c6", "c8"].includes(c.id)).map(c => "- " + c.text + " [문장 " + c.evidence.join(", ") + "]").join("\n");
+    return [
+      "[역할] 당신은 초등학생이 쓴 명세를 그대로 구현하는 개발자입니다. 명세에 없는 기능은 만들지 마세요. 화면의 글은 초등학생이 읽을 수 있는 한국어로 씁니다.", "",
+      "[맥락] 「아기돼지 삼형제」 이야기 속 상황입니다.", threat, "",
+      "[만들 것] " + s.name.trim(),
+      "[누구를 위해] " + (who ? who.name + " — " + who.role : ""), "",
+      "[기능]", nonEmpty(s.features).map((f, i) => (i + 1) + ". " + f.trim()).join("\n"), "",
+      "[성공 조건] 아래 세 가지가 모두 통과해야 합니다.", nonEmpty(s.success).map((c, i) => (i + 1) + ". " + c.trim()).join("\n"), "",
+      "HTML 파일 하나로 만들어 주세요. 외부 라이브러리 없이. 코드 전체를 한 번에 보여 주세요."
+    ].join("\n");
+  }
+  function copyPrompt() {
+    const text = document.getElementById("prompt-out").value;
+    const msg = document.getElementById("copy-msg");
+    const done = () => { msg.textContent = "복사했어요. AI에 붙여 넣어요."; setTimeout(() => { msg.textContent = ""; }, 2500); };
+    const fail = () => { msg.textContent = "복사가 안 됐어요. 글을 직접 선택해 복사해 주세요."; };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fail); return; }
+    try { document.getElementById("prompt-out").select(); document.execCommand("copy") ? done() : fail(); } catch (e) { fail(); }
+  }
+
+  // ---------- 3단계 ----------
+  function renderRun() {
+    document.getElementById("html-in").value = state.html;
+    if (state.ran && HTML_MARK.test(state.html)) document.getElementById("frame").srcdoc = state.html;
+  }
+  function runHtml() {
+    const html = document.getElementById("html-in").value;
+    const msg = document.getElementById("run-msg");
+    if (!html.trim()) { msg.textContent = "붙여 넣은 코드가 없어요."; return; }
+    if (!HTML_MARK.test(html)) { msg.textContent = "HTML 코드 같지 않아요. <html>, <body>, <script> 중 하나는 있어야 해요. AI 답 전체를 복사했나요?"; return; }
+    msg.textContent = "";
+    setState(Object.assign({}, state, { html, ran: true }));
+    document.getElementById("frame").srcdoc = html;
+  }
+
+  // ---------- 4단계 ----------
+  function setCard(idx, patch) { setState(Object.assign({}, state, { cards: state.cards.map((c, i) => i === idx ? Object.assign({}, c, patch) : c) })); }
+  function cardNode(card, idx) {
+    const wrap = NE.el("div", { class: "card vcard" + (card.result === "통과" ? " pass" : card.result === "실패" ? " fail" : "") });
+    wrap.appendChild(NE.el("h3", { text: (idx + 1) + ". " + CARD_LABELS[idx] }));
+    const area = (key, label) => {
+      const ta = NE.el("textarea", {});
+      ta.value = card[key];
+      ta.addEventListener("input", () => { setCard(idx, { [key]: ta.value }); });
+      wrap.appendChild(NE.el("div", { class: "field" }, [NE.el("label", { text: label }), ta]));
+    };
+    area("input", "입력 — 내가 하는 것");
+    area("expect", "예상 — 일어나야 하는 것");
+    area("actual", "실제 — 일어난 것");
+    const sel = NE.el("select", {});
+    RESULTS.forEach(r => sel.appendChild(NE.el("option", { value: r, text: r })));
+    sel.value = card.result;
+    const msg = NE.el("div", { class: "msg" });
+    sel.addEventListener("change", () => {
+      const cur = state.cards[idx];
+      if (sel.value !== "아직" && !cur.actual.trim()) { sel.value = "아직"; msg.textContent = "'실제' 칸을 먼저 적어요."; return; }
+      if (sel.value !== "아직" && !cur.expect.trim()) { sel.value = "아직"; msg.textContent = "'예상'이 비어 있어요. 무엇과 비교하나요?"; return; }
+      msg.textContent = "";
+      setCard(idx, { result: sel.value });
+      renderCards();
+    });
+    wrap.appendChild(NE.el("div", { class: "field" }, [NE.el("label", { text: "결과" }), sel, msg]));
+    return wrap;
+  }
+  function renderCards() {
+    const box = document.getElementById("cards");
+    box.innerHTML = "";
+    state.cards.forEach((c, i) => box.appendChild(cardNode(c, i)));
+    const pass = state.cards.filter(c => c.result === "통과").length;
+    const fail = state.cards.filter(c => c.result === "실패").length;
+    document.getElementById("sum-text").textContent = "3개 중 " + pass + "개 통과";
+    const badge = document.getElementById("sum-badge");
+    const level = fail > 0 ? ["bad", "실패 " + fail + "개"] : pass === 3 ? ["ok", "모두 통과"] : ["warn", "아직 " + (3 - pass) + "개 남음"];
+    badge.className = "badge " + level[0];
+    badge.textContent = level[1];
+    document.getElementById("msg-4").textContent = pass === 3 ? "명세대로 됐어요. 이제 5단계에서 친구에게 보여 주고 피드백을 받아요." : "";
+    document.getElementById("loop").hidden = fail === 0;
+    renderLoops();
+  }
+  function renderLoops() {
+    document.getElementById("loop-count").textContent = state.loops > 0 ? "지금까지 " + state.loops + "바퀴 돌았어요." : "";
+    const log = document.getElementById("loop-log");
+    log.innerHTML = "";
+    state.history.forEach((h, i) => log.appendChild(NE.el("li", { text: (i + 1) + "바퀴: " + (h.to === "spec" ? "명세로 돌아감" : "프롬프트를 고침") + (h.fails ? " (실패 " + h.fails + "개)" : "") })));
+  }
+  function loopBack(to) {
+    const fails = state.cards.filter(c => c.result === "실패").length;
+    setState(Object.assign({}, state, {
+      loops: state.loops + 1,
+      history: state.history.concat([{ to, fails }]),
+      cards: state.cards.map(c => Object.assign({}, c, { actual: "", result: "아직" }))
+    }));
+    goTo(to === "spec" ? 1 : 2);
+    if (to === "prompt") document.getElementById("copy-msg").textContent = "명세를 안 바꾸면 프롬프트도 같아요. 프롬프트 글을 AI에 보낼 때 '이전 코드에서 ~를 고쳐 주세요'를 덧붙여 보세요.";
+  }
+  function suggestCards() {
+    const hasText = state.cards.some(c => c.input.trim() || c.expect.trim());
+    if (hasText && !confirm("카드의 '입력'과 '예상'을 제안 내용으로 바꿀까요?")) return;
+    const fromSpec = nonEmpty(state.spec.success);
+    const isExample = state.spec.name.trim() === EXAMPLE_SPEC.name;
+    setState(Object.assign({}, state, { cards: state.cards.map((c, i) => Object.assign({}, c,
+      isExample ? SUGGEST_CARDS[i] : { input: "성공 조건 " + (i + 1) + "을 해 본다", expect: fromSpec[i] || "" })) }));
+    renderCards();
+  }
+
+  function bind() {
+    document.getElementById("s-name").addEventListener("input", e => setSpec({ name: e.target.value }));
+    document.getElementById("s-who").addEventListener("change", e => setSpec({ who: e.target.value }));
+    document.getElementById("btn-example-spec").addEventListener("click", () => { setSpec(EXAMPLE_SPEC); renderSpecForm(); document.getElementById("msg-1").textContent = ""; });
+    document.getElementById("next-1").addEventListener("click", () => { const err = validateSpec(); document.getElementById("msg-1").textContent = err; if (!err) goTo(2); });
+    document.getElementById("back-2").addEventListener("click", () => goTo(1));
+    document.getElementById("next-2").addEventListener("click", () => goTo(3));
+    document.getElementById("btn-copy").addEventListener("click", copyPrompt);
+    document.getElementById("btn-run").addEventListener("click", runHtml);
+    document.getElementById("btn-example-code").addEventListener("click", () => { document.getElementById("html-in").value = EXAMPLE_HTML; runHtml(); });
+    document.getElementById("html-in").addEventListener("input", e => setState(Object.assign({}, state, { html: e.target.value, ran: false })));
+    document.getElementById("back-3").addEventListener("click", () => goTo(2));
+    document.getElementById("next-3").addEventListener("click", () => {
+      if (!state.ran) { document.getElementById("run-msg").textContent = "먼저 코드를 실행해서 화면을 확인해요."; return; }
+      goTo(4);
+    });
+    document.getElementById("btn-suggest").addEventListener("click", suggestCards);
+    document.getElementById("btn-to-spec").addEventListener("click", () => loopBack("spec"));
+    document.getElementById("btn-to-prompt").addEventListener("click", () => loopBack("prompt"));
+    document.getElementById("back-4").addEventListener("click", () => goTo(3));
+    document.getElementById("btn-restart").addEventListener("click", () => {
+      if (!confirm("모든 내용을 지우고 처음부터 시작할까요?")) return;
+      setState(normalize(EMPTY)); renderSpecForm(); document.getElementById("frame").removeAttribute("srcdoc"); goTo(1);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    bind(); renderSpecForm();
+    if (state.step === 2) document.getElementById("prompt-out").value = composePrompt(state.spec);
+    if (state.step >= 3) renderRun();
+    if (state.step === 4) renderCards();
+    renderProgress();
+  });
+})();
+</script>
+</body>
+</html>
