@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>노벨 엔지니어링 × 바이브코딩 — 아기돼지 삼형제</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared/style.css">
+<style>
+  .hero { padding: 36px 0 20px; }
+  .hero h1 { font-size: 2rem; }
+  .hero .sub { font-size: 1.05rem; color: var(--muted); }
+  .spine { margin: 14px 0 0; padding: 12px 16px; border-left: 4px solid var(--accent); background: var(--paper); border-radius: 0 12px 12px 0; }
+  .stage-card { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .stage-card .head { display: flex; align-items: baseline; gap: 10px; }
+  .stage-card .num { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .stage-card .think { font-size: 0.85rem; color: var(--muted); }
+  .apps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .apps h4 { margin: 0 0 6px; font-size: 0.85rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .apps ul { list-style: none; margin: 0; padding: 0; }
+  .apps li { margin: 0 0 6px; }
+  .apps a { text-decoration: none; display: block; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+  .apps a:hover { border-color: var(--accent); }
+  .apps a small { display: block; color: var(--muted); font-size: 0.78rem; }
+  .teacher a { border-left: 4px solid var(--brick); }
+  .student a { border-left: 4px solid var(--straw); }
+  @media (max-width: 640px) { .apps { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>노벨 엔지니어링 × 바이브코딩</h1>
+    <p class="sub">구현을 넘기고, 정의와 검증을 남기다 — 「아기돼지 삼형제」로 만든 단계별 예시</p>
+    <div class="spine">
+      <b>척추 문장.</b> 교사는 학생의 사고를 <b>열거나</b>(체험·시뮬레이션) <b>닫게</b>(기준·검증 도구) 만드는 장치를 만들고,
+      학생은 <b>정의와 검증</b>이라는 수렴을 맡는다. 학생이 직접 만들 때도 명세와 검증은 학생 몫이다.
+    </div>
+    <p class="muted" style="margin-top:12px">
+      아래 모든 앱은 서버 없이 브라우저에서만 돌아갑니다. 각 앱은 <a href="shared/story.js">공통 원문 데이터</a>(문장 43개)를 근거로 삼고,
+      "문장 12" 같은 배지를 누르면 원문이 뜹니다. 강의 중 만든 것과 같은 방식(바이브코딩)으로 제작되었습니다.
+    </p>
+  </div>
+
+  <div class="grid two">
+
+    <div class="card stage-card">
+      <div class="head"><span class="num">1</span><h2>책 읽기</h2></div>
+      <div class="think">요구 사고 · 상황 모형(수렴), 관점 취하기</div>
+      <div class="apps">
+        <div class="teacher"><h4>교사가 만드는 것</h4><ul>
+          <li><a href="01-reading/interview-bot.html">인물 인터뷰 챗봇<small>텍스트 근거로만 답한다. "책에 없어요"를 허용</small></a></li>
+          <li><a href="01-reading/constraint-cards.html">제약 카드 생성기<small>시대·장소·자원 제약을 근거 문장과 함께 뽑기</small></a></li>
+        </ul></div>
+        <div class="student"><h4>학생이 만드는 것</h4><ul>
+          <li><a href="01-reading/relations-timeline.html">인물 관계도·사건 타임라인<small>텍스트 충실성이 곧 평가 기준</small></a></li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="card stage-card">
+      <div class="head"><span class="num">2</span><h2>문제 인식</h2></div>
+      <div class="think">요구 사고 · 확산(열거) → 수렴(정의), 연역(제약 도출)</div>
+      <div class="apps">
+        <div class="teacher"><h4>교사가 만드는 것</h4><ul>
+          <li><a href="02-problem/problem-sims.html">문제 상황 체험 시뮬레이션<small>바람 vs 재료 · 늑대가 오는 밤 · 식량 계산기</small></a></li>
+          <li><a href="02-problem/problem-board.html">익명 문제 보드<small>열거 → 묶기 → 고르기</small></a></li>
+          <li><a href="02-problem/problem-worksheet.html">문제 정의 워크시트<small>제약마다 텍스트 근거를 붙여야 저장</small></a></li>
+        </ul></div>
+        <div class="student"><h4>학생이 만드는 것</h4><ul>
+          <li><a href="02-problem/sim-builder.html">내가 만드는 시뮬레이션<small>변수를 정하려면 이해해야 한다</small></a></li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="card stage-card">
+      <div class="head"><span class="num">3</span><h2>해결책 설계</h2></div>
+      <div class="think">요구 사고 · 확산(대안), 수렴(기준 선택), 가추</div>
+      <div class="apps">
+        <div class="teacher"><h4>교사가 만드는 것</h4><ul>
+          <li><a href="03-design/decision-matrix.html">의사결정 매트릭스<small>텍스트에서 뽑은 기준으로 대안 비교</small></a></li>
+          <li><a href="03-design/constraint-deck.html">탈고착 제약 카드<small>책의 해법 금지 · 랜덤 제약</small></a></li>
+        </ul></div>
+        <div class="student"><h4>학생이 만드는 것</h4><ul>
+          <li><a href="03-design/three-prototypes.html">아이디어 3개, 선택 1개<small>급속 시제품 → 기준으로 정당화</small></a></li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="card stage-card">
+      <div class="head"><span class="num">4</span><h2>창작물 만들기</h2></div>
+      <div class="think">요구 사고 · 명세, 분해, 검증, 메타인지</div>
+      <div class="apps">
+        <div class="teacher"><h4>교사가 만드는 것</h4><ul>
+          <li><a href="04-make/spec-template.html">명세서 템플릿<small>기능·입력·출력·성공 조건</small></a></li>
+          <li><a href="04-make/verify-cards.html">검증 카드<small>예상 vs 실제 3케이스</small></a></li>
+        </ul></div>
+        <div class="student"><h4>학생이 만드는 것</h4><ul>
+          <li><a href="04-make/spec-to-prompt.html">명세 → 프롬프트 → 실행 → 검증<small>실제 AI에 보내고 결과를 붙여 검증</small></a></li>
+          <li><a href="04-make/sensor-logic.html">늑대 감지 장치 만들기<small>센서 논리를 말로 정의하는 피지컬 컴퓨팅</small></a></li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="card stage-card">
+      <div class="head"><span class="num">5</span><h2>피드백·개선</h2></div>
+      <div class="think">요구 사고 · 귀납, 성찰적 의사결정</div>
+      <div class="apps">
+        <div class="teacher"><h4>교사가 만드는 것</h4><ul>
+          <li><a href="05-feedback/gallery.html">3기준 갤러리 피드백<small>인물이 쓸 수 있나 · 제약을 지켰나 · 작동하나 + 교사 대시보드</small></a></li>
+        </ul></div>
+        <div class="student"><h4>학생이 만드는 것</h4><ul>
+          <li><a href="05-feedback/prompt-history.html">v1 → v2 성찰<small>무엇을 왜 바꿨는지 프롬프트 이력</small></a></li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="card stage-card">
+      <div class="head"><span class="num">6</span><h2>이야기 재구성</h2></div>
+      <div class="think">요구 사고 · 반사실적·인과 추론</div>
+      <div class="apps">
+        <div class="teacher"><h4>교사가 만드는 것</h4><ul>
+          <li><a href="06-rewrite/event-graph.html">원작 사건 그래프<small>장치를 어느 지점에 넣으면 이후가 어떻게 바뀌나</small></a></li>
+          <li><a href="06-rewrite/contradiction-check.html">모순 지적기<small>새 이야기의 모순을 찾으면 학생이 반박·수정</small></a></li>
+        </ul></div>
+        <div class="student"><h4>학생이 만드는 것</h4><ul>
+          <li><a href="06-rewrite/branching-story.html">분기형 이야기 앱<small>장치가 있을 때 / 없을 때</small></a></li>
+        </ul></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="teacher-note">
+    <b>이 사이트 자체가 관점 1(교사–수단)의 산물입니다.</b> 원문 데이터 한 파일을 공통 근거로 두고, 각 앱을 명세 → 생성 → 검증 순서로 만들었습니다.
+    소스는 <a href="https://github.com/crossall/novelengineering">github.com/crossall/novelengineering</a>에 있습니다.
+  </div>
+</div>
+</body>
+</html>
